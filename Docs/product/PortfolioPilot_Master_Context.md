@@ -48,6 +48,7 @@ It is **not** scalping, day trading, automatic trading, AI headline trading, hig
 11. Unused growth allocation moves to cash or underweight core ETF.
 12. Selling requires manual emergency review.
 13. Every user's data is private and protected with Supabase RLS.
+14. **Market prices are fetched automatically** (Yahoo Finance or equivalent free API). Users enter symbols and shares; the system computes `current_value`. Manual price entry is not the long-term workflow.
 
 ## Multi-User Model
 
@@ -61,7 +62,7 @@ It is **not** scalping, day trading, automatic trading, AI headline trading, hig
 1. **Account** — sign up or log in.
 2. **Currency and monthly amount** — preferred currency, monthly investment amount, investment day (default: 1st).
 3. **Investor profile** — risk profile (conservative / balanced / growth / aggressive growth), time horizon.
-4. **Current holdings** — ticker, asset type, currency, current value, cost basis, optional shares and broker.
+4. **Current holdings** — ticker, asset type, currency, **shares**, cost basis, optional broker. **Market value is auto-fetched** from Yahoo Finance (B4.5); user does not maintain `current_value` manually.
 5. **Target allocation** — recommended or custom bucket weights (core ETF, growth, individual stocks, cash).
 6. **Watchlist** — curated ETF and stock symbols for monitoring.
 7. **First monthly plan preview** — generated buy plan for user confirmation.
@@ -105,7 +106,7 @@ Three research/report layers:
 | `/auth` | Sign up and log in |
 | `/onboarding` | Multi-step setup flow |
 | `/dashboard` | Portfolio overview, allocation charts, buy plan, risk badges |
-| `/holdings` | Add and edit current positions |
+| `/holdings` | Positions — symbol, shares, auto-valued totals (no manual price upkeep) |
 | `/monthly-plan` | Exact monthly buy amounts |
 | `/news-input` | Enter ChatGPT scheduled report values |
 | `/settings` | Monthly amount, currency, risk profile, allocation, email prefs, watchlist |
@@ -131,10 +132,11 @@ Three research/report layers:
 2. **Portfolio input** — holdings, target allocation, watchlist, currency, monthly amount.
 3. **Monthly allocation engine** — target allocation algorithm, contribution-based rebalancing, drift bands, exact buy amounts.
 4. **Visual dashboard** — portfolio cards, allocation charts, buy plan cards, watchlist table, risk badges.
-5. **Risk and technical algorithms** — trend, momentum, volatility, drawdown, concentration warnings.
-6. **Manual ChatGPT news layer** — scheduled task prompts, daily/weekly/monthly input, news modifier logic.
-7. **Email alerts** — monthly plan, urgent risk, investment reminder, manual review.
-8. **Later improvements** — API market data, auto price updates, backtesting, currency conversion, family groups, view-only sharing.
+5. **Market data & auto valuation** — Yahoo Finance quotes; auto `current_value` on holdings, dashboard, monthly plan, P&L.
+6. **Risk and technical algorithms** — trend, momentum, volatility, drawdown, concentration warnings.
+7. **Manual ChatGPT news layer** — scheduled task prompts, daily/weekly/monthly input, news modifier logic.
+8. **Email alerts** — monthly plan, urgent risk, investment reminder, manual review.
+9. **Later improvements** — paid quote providers, backtesting, currency conversion, family groups, view-only sharing.
 
 ## Email Alerts (Future)
 

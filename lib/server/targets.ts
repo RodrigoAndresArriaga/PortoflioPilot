@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
+import { inferTargetAssetsFromHoldings } from "@/lib/allocation/infer-bucket-assignments";
 import { parseZodError, requireAuthUser } from "@/lib/server/auth";
+import { getHoldings } from "@/lib/server/holdings";
 import { getUserPortfolio } from "@/lib/server/portfolio";
 import { createClient } from "@/lib/supabase/server";
 import { upsertTargetAllocationsSchema } from "@/lib/validation/targets";
@@ -166,6 +168,34 @@ export async function upsertTargetAllocations(
 
     if (assetsError) {
       return { ok: false, error: assetsError.message };
+    }
+  } else if (payload.allocation_mode !== "symbol") {
+    const holdings = await getHoldings();
+    const inferredAssets = inferTargetAssetsFromHoldings(
+      (holdings ?? []).map((holding) => ({
+        symbol: holding.symbol,
+        asset_type: holding.asset_type,
+      })),
+      enabledBuckets.map((bucket) => bucket.bucket_key),
+    );
+
+    if (inferredAssets.length > 0) {
+      const assetRows = inferredAssets.map((asset) => ({
+        user_id: user.id,
+        portfolio_id: portfolio.id,
+        symbol: normalizeSymbol(asset.symbol),
+        bucket_key: asset.bucket_key,
+        target_percent: null,
+        enabled: true,
+      }));
+
+      const { error: assetsError } = await supabase
+        .from("target_assets")
+        .insert(assetRows);
+
+      if (assetsError) {
+        return { ok: false, error: assetsError.message };
+      }
     }
   }
 

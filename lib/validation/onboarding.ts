@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { inferTargetAssetsFromHoldings } from "@/lib/allocation/infer-bucket-assignments";
+
 export {
   allocationModeSchema,
   assetTypeSchema,
@@ -391,66 +393,35 @@ export function getDefaultOnboardingFormData(
 export function getSymbolTargetsFromHoldings(
   holdings: HoldingInput[],
   riskProfile: z.infer<typeof riskProfileSchema> = "growth",
+  includeIndividualStock = false,
 ): TargetAssetInput[] {
-  const symbols = new Set(
-    holdings.map((holding) => holding.symbol.trim().toUpperCase()),
+  const buckets = getRecommendedBucketsForRisk(
+    riskProfile,
+    includeIndividualStock,
   );
-  const buckets = getRecommendedBucketsForRisk(riskProfile);
-  const bucketPercent = (key: TargetBucketKey) =>
-    buckets.find((bucket) => bucket.bucket_key === key)?.target_percent ?? 0;
+  const enabledKeys = buckets
+    .filter((bucket) => bucket.enabled)
+    .map((bucket) => bucket.bucket_key);
 
-  const assets: TargetAssetInput[] = [];
+  const inferred = inferTargetAssetsFromHoldings(
+    holdings.map((holding) => ({
+      symbol: holding.symbol,
+      asset_type: holding.asset_type,
+    })),
+    enabledKeys,
+  );
 
-  if (symbols.has("VOO")) {
-    assets.push({
-      symbol: "VOO",
-      bucket_key: "core_etf",
-      target_percent: bucketPercent("core_etf"),
-    });
-  } else if (symbols.has("VTI")) {
-    assets.push({
-      symbol: "VTI",
-      bucket_key: "core_etf",
-      target_percent: bucketPercent("core_etf"),
-    });
-  } else if (symbols.has("VXUS")) {
-    assets.push({
-      symbol: "VXUS",
-      bucket_key: "core_etf",
-      target_percent: bucketPercent("core_etf"),
-    });
+  if (inferred.length === 0) {
+    return [];
   }
 
-  if (symbols.has("QQQ")) {
-    assets.push({
-      symbol: "QQQ",
-      bucket_key: "growth_tech",
-      target_percent: bucketPercent("growth_tech"),
-    });
-  }
+  const equalPercent = 100 / inferred.length;
 
-  if (symbols.has("CASH")) {
-    assets.push({
-      symbol: "CASH",
-      bucket_key: "cash_reserve",
-      target_percent: bucketPercent("cash_reserve"),
-    });
-  } else if (holdings.some((holding) => holding.asset_type === "cash")) {
-    const cashHolding = holdings.find((holding) => holding.asset_type === "cash");
-    assets.push({
-      symbol: cashHolding?.symbol.trim().toUpperCase() || "CASH",
-      bucket_key: "cash_reserve",
-      target_percent: bucketPercent("cash_reserve"),
-    });
-  } else if (assets.length > 0) {
-    assets.push({
-      symbol: "CASH",
-      bucket_key: "cash_reserve",
-      target_percent: bucketPercent("cash_reserve"),
-    });
-  }
-
-  return assets;
+  return inferred.map((asset) => ({
+    symbol: asset.symbol,
+    bucket_key: asset.bucket_key,
+    target_percent: equalPercent,
+  }));
 }
 
 export function formatZodErrors(error: z.ZodError): Record<string, string> {

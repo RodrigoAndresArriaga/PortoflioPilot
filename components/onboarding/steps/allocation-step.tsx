@@ -115,7 +115,11 @@ export function AllocationStep({
       target_assets:
         value.target_assets.length > 0
           ? value.target_assets
-          : getSymbolTargetsFromHoldings(holdings, riskProfile),
+          : getSymbolTargetsFromHoldings(
+              holdings,
+              riskProfile,
+              value.include_individual_stock_bucket,
+            ),
     });
   }
 

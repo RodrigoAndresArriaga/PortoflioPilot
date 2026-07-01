@@ -73,9 +73,9 @@ Current positions owned by the user.
 | `asset_name` | text | |
 | `asset_type` | text NOT NULL | etf / stock / cash / crypto / other |
 | `currency` | text NOT NULL | default `'MXN'` |
-| `shares` | numeric(18,6) | optional |
-| `current_value` | numeric(14,2) NOT NULL | check >= 0; required for weight calculations |
-| `cost_basis` | numeric(14,2) | check >= 0 when set |
+| `shares` | numeric(18,6) | required for market assets once B4.5 ships |
+| `current_value` | numeric(14,2) NOT NULL | check >= 0; **computed** from shares × latest price (B4.5). Manual entry is interim B2 only. |
+| `cost_basis` | numeric(14,2) | check >= 0 when set; user-entered for P&L |
 | `broker` | text | optional |
 | `created_at` | timestamptz NOT NULL | default now() |
 | `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
@@ -83,6 +83,8 @@ Current positions owned by the user.
 Constraints: `unique (portfolio_id, symbol)`.
 
 Weights are based on **current market value**, not cost basis alone.
+
+**B4.5 (planned):** add `last_price`, `last_price_at`, `price_source` on `holdings` (or a quote cache table). See [Market_Data.md](./Market_Data.md).
 
 ---
 
@@ -241,6 +243,7 @@ TypeScript types: `types/database.ts`
 | profiles | B1 | Implemented — `001_profiles.sql` |
 | portfolios | B2 | Implemented — `002_portfolio_schema.sql` |
 | holdings | B2 | Implemented — `002_portfolio_schema.sql` |
+| holdings quote columns | B4.5 | Planned — see [Market_Data.md](./Market_Data.md) |
 | target_allocations | B2 | Implemented — `002_portfolio_schema.sql` |
 | watchlist_items | B2 | Implemented — `002_portfolio_schema.sql` |
 | monthly_plans | B4 | Implemented — `004_monthly_plans.sql` |

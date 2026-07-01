@@ -2,6 +2,8 @@
 
 Canonical formulas and rules for PortfolioPilot's allocation and scoring engine. Implementation begins in B3 (core allocation) and B5 (technical/risk scores).
 
+**Price inputs:** E1 and all weight calculations assume **auto-updated** `holdings.current_value` from live quotes (B4.5 — see [Market_Data.md](./Market_Data.md)). Manual `current_value` entry is interim only.
+
 ---
 
 ## Core Algorithms (v1)

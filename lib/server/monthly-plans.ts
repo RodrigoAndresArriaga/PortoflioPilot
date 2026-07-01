@@ -2,17 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 
-import { computeTargetAllocation } from "@/lib/engine/allocation";
-import type { EngineTargetAllocation } from "@/lib/engine/types";
 import { parseZodError, requireAuthUser } from "@/lib/server/auth";
 import { getHoldings } from "@/lib/server/holdings";
+import {
+  buildMonthlyPlanPayload,
+  getCurrentMonthKey,
+} from "@/lib/server/monthly-plan-generation";
+import { normalizePlanSymbol } from "@/lib/monthly-plan/format";
 import { getUserPortfolio } from "@/lib/server/portfolio";
 import { getUserProfile } from "@/lib/server/profile";
-import {
-  getTargetAllocations,
-  type TargetAllocationsSnapshot,
-} from "@/lib/server/targets";
-import { baseCurrencySchema } from "@/lib/validation/common";
+import { getTargetAllocations } from "@/lib/server/targets";
 import {
   getMonthlyPlanSchema,
   markMonthlyPlanCompletedSchema,
@@ -20,27 +19,13 @@ import {
   type SaveMonthlyPlanInput,
 } from "@/lib/validation/monthly-plan";
 import type {
-  Holding,
   MonthlyPlan,
-  MonthlyPlanItem,
   MonthlyPlanWithItems,
 } from "@/types/database";
 
 export type MutationResult<T = undefined> =
   | { ok: true; data: T }
   | { ok: false; error: string };
-
-function normalizeSymbol(symbol: string): string {
-  return symbol.trim().toUpperCase();
-}
-
-// current month key in UTC
-function getCurrentMonthKey(): string {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
-}
 
 type PersistContext = {
   supabase: Awaited<
@@ -50,78 +35,9 @@ type PersistContext = {
   portfolioId: string;
 };
 
-// map allocation snapshot to engine target weights
-function resolveEngineTargets(
-  snapshot: TargetAllocationsSnapshot,
-  holdings: Holding[],
-): { ok: true; data: EngineTargetAllocation[] } | { ok: false; error: string } {
-  const enabledAssets = snapshot.target_assets.filter((asset) => asset.enabled);
-
-  if (snapshot.allocation_mode === "symbol") {
-    if (enabledAssets.length === 0) {
-      return {
-        ok: false,
-        error: "Add at least one symbol target before generating a plan.",
-      };
-    }
-
-    return {
-      ok: true,
-      data: enabledAssets.map((asset) => ({
-        symbol: normalizeSymbol(asset.symbol),
-        target_weight: (asset.target_percent ?? 0) / 100,
-      })),
-    };
-  }
-
-  if (enabledAssets.length === 0) {
-    return {
-      ok: false,
-      error:
-        "Configure symbol targets for your buckets before generating a plan.",
-    };
-  }
-
-  const enabledBuckets = snapshot.target_buckets.filter((bucket) => bucket.enabled);
-  const holdingSymbols = new Set(
-    holdings.map((holding) => normalizeSymbol(holding.symbol)),
-  );
-  const weightBySymbol = new Map<string, number>();
-
-  for (const bucket of enabledBuckets) {
-    const assetsInBucket = enabledAssets.filter(
-      (asset) => asset.bucket_key === bucket.bucket_key,
-    );
-    const symbolsInBucket = assetsInBucket
-      .map((asset) => normalizeSymbol(asset.symbol))
-      .filter((symbol) => holdingSymbols.has(symbol));
-
-    if (symbolsInBucket.length === 0) {
-      continue;
-    }
-
-    const weightEach = bucket.target_percent / 100 / symbolsInBucket.length;
-
-    for (const symbol of symbolsInBucket) {
-      weightBySymbol.set(symbol, (weightBySymbol.get(symbol) ?? 0) + weightEach);
-    }
-  }
-
-  if (weightBySymbol.size === 0) {
-    return {
-      ok: false,
-      error:
-        "No holdings match your bucket symbol targets. Add holdings or update targets.",
-    };
-  }
-
-  return {
-    ok: true,
-    data: Array.from(weightBySymbol.entries()).map(([symbol, target_weight]) => ({
-      symbol,
-      target_weight,
-    })),
-  };
+function revalidateMonthlyPlanPaths() {
+  revalidatePath("/dashboard");
+  revalidatePath("/monthly-plan");
 }
 
 // upsert plan header and replace line items
@@ -198,7 +114,7 @@ async function persistMonthlyPlan(
 
   const itemRows = payload.items.map((item) => ({
     monthly_plan_id: planId,
-    symbol: normalizeSymbol(item.symbol),
+    symbol: normalizePlanSymbol(item.symbol),
     target_weight: item.target_weight,
     current_weight: item.current_weight,
     recommended_amount: item.recommended_amount,
@@ -232,7 +148,7 @@ async function persistMonthlyPlan(
     };
   }
 
-  revalidatePath("/dashboard");
+  revalidateMonthlyPlanPaths();
 
   return {
     ok: true,
@@ -312,39 +228,16 @@ export async function generateMonthlyPlan(
     return { ok: false, error: "Target allocations not found." };
   }
 
-  const resolvedTargets = resolveEngineTargets(targets, holdings);
-  if (!resolvedTargets.ok) {
-    return { ok: false, error: resolvedTargets.error };
-  }
-
-  const engineInput = {
-    holdings: holdings.map((holding) => ({
-      symbol: holding.symbol,
-      current_value: holding.current_value,
-    })),
-    target_allocations: resolvedTargets.data,
-    monthly_investment_amount: profile.monthly_investment_amount,
-  };
-
-  const results = computeTargetAllocation(engineInput);
-
-  const currencyResult = baseCurrencySchema.safeParse(profile.base_currency);
-  const currency = currencyResult.success ? currencyResult.data : "MXN";
-
-  const payload: SaveMonthlyPlanInput = {
+  const payloadResult = buildMonthlyPlanPayload({
+    profile,
+    holdings,
+    targets,
     month: planMonth,
-    monthly_amount: profile.monthly_investment_amount,
-    currency,
-    status: "draft",
-    items: results.map((result) => ({
-      symbol: result.symbol,
-      target_weight: result.target_weight,
-      current_weight: result.current_weight,
-      recommended_amount: result.recommended_buy,
-      adjusted_amount: result.recommended_buy,
-      reason: result.reason,
-    })),
-  };
+  });
+
+  if (!payloadResult.ok) {
+    return { ok: false, error: payloadResult.error };
+  }
 
   return persistMonthlyPlan(
     {
@@ -352,7 +245,7 @@ export async function generateMonthlyPlan(
       userId: auth.user.id,
       portfolioId: portfolio.id,
     },
-    payload,
+    payloadResult.data,
   );
 }
 
@@ -436,7 +329,9 @@ export async function markMonthlyPlanCompleted(
     };
   }
 
-  revalidatePath("/dashboard");
+  revalidateMonthlyPlanPaths();
 
   return { ok: true, data };
 }
+
+export { getCurrentMonthKey };

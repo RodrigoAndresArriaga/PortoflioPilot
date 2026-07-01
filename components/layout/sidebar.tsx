@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BriefcaseIcon,
+  CalendarIcon,
   EyeIcon,
   LayoutDashboardIcon,
   PieChartIcon,
@@ -25,6 +26,11 @@ const navItems = [
     href: "/holdings",
     label: "Holdings",
     icon: BriefcaseIcon,
+  },
+  {
+    href: "/monthly-plan",
+    label: "Monthly plan",
+    icon: CalendarIcon,
   },
   {
     href: "/settings/allocations",

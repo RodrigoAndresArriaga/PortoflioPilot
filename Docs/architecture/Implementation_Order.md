@@ -11,6 +11,7 @@ Milestone-ordered build plan for PortfolioPilot. Each milestone has a clear entr
 | **B2** | Portfolio input (holdings, allocation, watchlist, settings) | Phase 2 | Planned |
 | **B3** | Monthly allocation engine | Phase 3 | Planned |
 | **B4** | Visual dashboard (Recharts) | Phase 4 | Planned |
+| **B4.5** | Market data & auto valuation (Yahoo Finance) | Phase 4 | Planned |
 | **B5** | Risk and technical algorithms | Phase 5 | Planned |
 | **B6** | Manual ChatGPT news layer | Phase 6 | Planned |
 | **B7** | Email alerts (Resend) | Phase 7 | Planned |
@@ -70,10 +71,12 @@ Milestone-ordered build plan for PortfolioPilot. Each milestone has a clear entr
 **Scope:**
 - Database tables: `portfolios`, `holdings`, `target_allocations`
 - RLS on all new tables
-- `/holdings` page — CRUD for current positions
+- `/holdings` page — CRUD for current positions (interim: manual `current_value`; replaced by B4.5 auto valuation)
 - Target allocation page — bucket weights, max percent, enabled flags
 - Watchlist setup
 - Settings: currency, monthly amount, investment day
+
+**Note:** B4.5 adds Yahoo Finance quotes so users enter **symbol + shares** only; `current_value` is computed automatically.
 
 ---
 
@@ -91,10 +94,36 @@ Milestone-ordered build plan for PortfolioPilot. Each milestone has a clear entr
 
 ## B4 — Visual Dashboard
 
+**Entry requirements:** B3 stable; **B4.5 recommended** for live portfolio totals on charts.
+
 **Scope:**
 - Install Recharts
 - `/dashboard` page with portfolio value cards, allocation donut chart, target vs current chart, buy plan cards, watchlist table, risk badges
 - Supabase Realtime for live updates (optional in B4)
+
+---
+
+## B4.5 — Market Data & Auto Valuation
+
+**Entry requirements:** B2 holdings CRUD, B3 allocation engine.
+
+**Scope:**
+- Server-side quote fetcher using **Yahoo Finance** (free, no API key) or equivalent
+- Recompute `holdings.current_value` from `shares × latest_price` for ETFs and stocks
+- Quote cache with TTL; refresh on page load and scheduled daily job
+- Remove ongoing manual `current_value` entry — user supplies symbol + shares only
+- Wire refresh into `/holdings`, `/dashboard`, `/monthly-plan`, `/settings/allocations`
+
+**Reference:** [Market_Data.md](./Market_Data.md)
+
+**Exit criteria:**
+- Non-cash holdings auto-valued from live quotes
+- Portfolio total and allocation weights update without manual price edits
+- Monthly plan generation uses refreshed `current_value`
+- Stale-quote fallback when provider is unavailable
+- Manual value editor removed or read-only with computed display
+
+**Non-goals:** broker API, real-time ticks, automatic trading, paid market data APIs (B8+).
 
 ---
 
@@ -129,11 +158,13 @@ Milestone-ordered build plan for PortfolioPilot. Each milestone has a clear entr
 
 ## B8+ — Later Improvements
 
-- API-based market data and automatic price updates
-- Historical backtesting
-- Currency conversion
+- Paid or alternate market data providers (Polygon, Alpha Vantage) behind the same quote interface
+- Historical backtesting (requires price history store)
+- Currency conversion for multi-currency holdings
 - Family groups and view-only sharing
 - OpenAI API integration (if cost-effective)
+
+Note: **free Yahoo Finance auto-valuation** is B4.5, not B8+.
 
 ---
 
@@ -144,6 +175,7 @@ K1 (scaffold)
   └── B1 (auth + profiles)
         └── B2 (portfolio input)
               └── B3 (allocation engine)
+                    ├── B4.5 (market data / auto valuation)
                     ├── B4 (dashboard)
                     ├── B5 (algorithms)
                     └── B6 (news layer)
@@ -151,4 +183,4 @@ K1 (scaffold)
                                 └── B8+ (improvements)
 ```
 
-B4, B5, and B6 can partially overlap after B3 is stable, but B3 must land first because the dashboard and algorithms depend on plan generation output.
+B4.5 should land before or alongside B4 so dashboard cards and charts show live portfolio value. B5 depends on B4.5 for price history extensions.
