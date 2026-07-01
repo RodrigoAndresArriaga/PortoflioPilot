@@ -4,12 +4,15 @@ import {
   buildRemainderSweepContext,
   normalizeBuysToMonthlyBudget,
 } from "@/lib/engine/sweep-remainder";
-import { inferTargetAssetsFromHoldings } from "@/lib/allocation/infer-bucket-assignments";
+import {
+  buildBucketBySymbol,
+  resolveBucketModeAssets,
+} from "@/lib/allocation/bucket-mapping";
 import { normalizePlanSymbol } from "@/lib/monthly-plan/format";
 import type { TargetAllocationsSnapshot } from "@/lib/server/targets";
 import { baseCurrencySchema } from "@/lib/validation/common";
 import type { SaveMonthlyPlanInput } from "@/lib/validation/monthly-plan";
-import type { Holding, Profile, TargetAsset, TargetBucketKey } from "@/types/database";
+import type { Holding, Profile } from "@/types/database";
 
 // current month key in UTC
 export function getCurrentMonthKey(): string {
@@ -17,35 +20,6 @@ export function getCurrentMonthKey(): string {
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
-}
-
-type BucketModeAsset = Pick<TargetAsset, "symbol" | "bucket_key" | "enabled">;
-
-// use saved symbol-to-bucket mappings, or infer from holdings
-function resolveBucketModeAssets(
-  snapshot: TargetAllocationsSnapshot,
-  holdings: Holding[],
-): BucketModeAsset[] {
-  const saved = snapshot.target_assets.filter((asset) => asset.enabled);
-  if (saved.length > 0) {
-    return saved;
-  }
-
-  const enabledBuckets = snapshot.target_buckets
-    .filter((bucket) => bucket.enabled)
-    .map((bucket) => bucket.bucket_key);
-
-  return inferTargetAssetsFromHoldings(
-    holdings.map((holding) => ({
-      symbol: holding.symbol,
-      asset_type: holding.asset_type,
-    })),
-    enabledBuckets,
-  ).map((asset) => ({
-    symbol: asset.symbol,
-    bucket_key: asset.bucket_key,
-    enabled: true,
-  }));
 }
 
 // map allocation snapshot to engine target weights
@@ -122,27 +96,6 @@ export function resolveEngineTargets(
       target_weight,
     })),
   };
-}
-
-function buildBucketBySymbol(
-  snapshot: TargetAllocationsSnapshot,
-  holdings: Holding[],
-): Map<string, TargetBucketKey> {
-  if (snapshot.allocation_mode === "symbol") {
-    return new Map(
-      snapshot.target_assets.map((asset) => [
-        normalizePlanSymbol(asset.symbol),
-        asset.bucket_key,
-      ]),
-    );
-  }
-
-  return new Map(
-    resolveBucketModeAssets(snapshot, holdings).map((asset) => [
-      normalizePlanSymbol(asset.symbol),
-      asset.bucket_key,
-    ]),
-  );
 }
 
 type BuildMonthlyPlanPayloadInput = {

@@ -1,23 +1,19 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AllocationDonutChart } from "@/components/dashboard/allocation-donut-chart";
+import { AllocationDriftSection } from "@/components/dashboard/allocation-drift-section";
+import { DashboardStatsRow } from "@/components/dashboard/dashboard-stats-row";
+import { DashboardStatusBadges } from "@/components/dashboard/dashboard-status-badges";
+import { MonthlyPlanPreview } from "@/components/dashboard/monthly-plan-preview";
+import { WatchlistTable } from "@/components/dashboard/watchlist-table";
 import { AppShell } from "@/components/layout/app-shell";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { requireCurrentUserProfile } from "@/lib/server/profile";
+import { getDashboardData } from "@/lib/server/dashboard";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const profile = await requireCurrentUserProfile();
+  const data = await getDashboardData();
 
-  if (!profile.onboarding_completed) {
+  if (!data.profile.onboarding_completed) {
     redirect("/onboarding");
   }
 
@@ -26,34 +22,51 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const allocationLabel =
+    data.allocation.mode === "symbol" ? "symbol" : "bucket";
+
   return (
-    <AppShell profile={profile} email={user?.email}>
-      <div className="mx-auto w-full max-w-3xl space-y-8">
+    <AppShell profile={data.profile} email={user?.email} pageTitle="Dashboard">
+      <div className="mx-auto w-full max-w-6xl space-y-8">
         <div className="space-y-2">
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            Welcome{profile.full_name ? `, ${profile.full_name}` : ""}
+            Dashboard
           </h2>
           <p className="text-muted-foreground">
-            Your portfolio setup is complete. Review this month&apos;s recommended
-            buys on the monthly plan page.
+            Portfolio overview using your saved holdings, targets, and monthly
+            plan.
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">Setup complete</Badge>
-            </div>
-            <CardTitle>You&apos;re all set</CardTitle>
-            <CardDescription>
-              Your profile, portfolio, holdings, target allocation, and
-              watchlist are saved.
-            </CardDescription>
-            <Link href="/monthly-plan" className={cn(buttonVariants(), "mt-4")}>
-              View monthly plan
-            </Link>
-          </CardHeader>
-        </Card>
+        <DashboardStatsRow
+          totalPortfolioValue={data.totalPortfolioValue}
+          monthlyInvestmentAmount={data.profile.monthly_investment_amount}
+          nextInvestmentDate={data.nextInvestmentDate}
+          currency={data.profile.base_currency}
+        />
+
+        <DashboardStatusBadges riskProfile={data.profile.risk_profile} />
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AllocationDonutChart
+            title="Current allocation"
+            description={`Actual ${allocationLabel} weights from your holdings.`}
+            slices={data.allocation.currentSlices}
+            emptyMessage="Add holdings to see your current allocation."
+          />
+          <AllocationDonutChart
+            title="Target allocation"
+            description={`Target ${allocationLabel} weights from your settings.`}
+            slices={data.allocation.targetSlices}
+            emptyMessage="Set target allocations in settings to see targets."
+          />
+        </div>
+
+        <AllocationDriftSection driftRows={data.allocation.driftRows} />
+
+        <MonthlyPlanPreview monthlyPlan={data.monthlyPlan} />
+
+        <WatchlistTable watchlist={data.watchlist} />
       </div>
     </AppShell>
   );
