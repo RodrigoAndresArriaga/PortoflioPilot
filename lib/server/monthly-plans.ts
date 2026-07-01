@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { parseZodError, requireAuthUser } from "@/lib/server/auth";
+import {
+  dispatchMonthlyPlanReady,
+} from "@/lib/server/email-dispatch";
 import { getHoldingsWithFreshPrices } from "@/lib/server/market-data/with-fresh-holdings";
 import {
   buildMonthlyPlanPayload,
@@ -239,7 +242,7 @@ export async function generateMonthlyPlan(
     return { ok: false, error: payloadResult.error };
   }
 
-  return persistMonthlyPlan(
+  const persistResult = await persistMonthlyPlan(
     {
       supabase: auth.supabase,
       userId: auth.user.id,
@@ -247,6 +250,16 @@ export async function generateMonthlyPlan(
     },
     payloadResult.data,
   );
+
+  if (persistResult.ok) {
+    void dispatchMonthlyPlanReady(auth.user.id, persistResult.data).catch(
+      (error) => {
+        console.error("[email] Monthly plan ready dispatch failed:", error);
+      },
+    );
+  }
+
+  return persistResult;
 }
 
 export async function getMonthlyPlan(

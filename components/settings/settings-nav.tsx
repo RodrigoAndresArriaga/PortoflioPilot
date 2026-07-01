@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const settingsNavItems = [
   { href: "/settings/allocations", label: "Target allocation" },
   { href: "/settings/watchlist", label: "Watchlist" },
+  { href: "/settings/email", label: "Email alerts" },
 ] as const;
 
 export function SettingsNav() {

@@ -19,8 +19,23 @@ export type Profile = {
   risk_profile: string;
   time_horizon: string;
   onboarding_completed: boolean;
+  email_alerts_enabled: boolean;
+  email_monthly_plan_ready: boolean;
+  email_urgent_risk: boolean;
+  email_weekly_summary: boolean;
+  email_investment_reminder: boolean;
+  email_concentration_warning: boolean;
+  email_manual_review: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type EmailNotificationLog = {
+  id: string;
+  user_id: string;
+  alert_type: string;
+  dedup_key: string;
+  sent_at: string;
 };
 
 export type AllocationMode = "auto" | "bucket" | "symbol";

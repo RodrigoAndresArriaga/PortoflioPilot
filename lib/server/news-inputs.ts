@@ -7,14 +7,22 @@ import {
   buildNewsInputHeaderRow,
 } from "@/lib/news-input/fan-out";
 import { parseZodError, requireAuthUser } from "@/lib/server/auth";
+import {
+  dispatchManualReviewRequired,
+  dispatchUrgentRiskWarning,
+  dispatchWeeklyRiskSummary,
+  extractManualReviewReasons,
+} from "@/lib/server/email-dispatch";
 import { getUserPortfolio } from "@/lib/server/portfolio";
 import {
   getReportPeriod,
   newsReportTypeSchema,
   parsePastedNewsJson,
   saveNewsInputSchema,
+  type DailyUrgentScanReport,
   type NewsReport,
   type NewsReportType,
+  type WeeklyMarketReviewReport,
 } from "@/lib/validation/news-input";
 import type { ManualNewsInput } from "@/types/database";
 
@@ -171,7 +179,48 @@ export async function saveNewsInput(
   revalidatePath("/dashboard");
   revalidatePath("/news-input");
 
+  void dispatchNewsInputEmails(user.id, saved).catch((error) => {
+    console.error("[email] News input dispatch failed:", error);
+  });
+
   return { ok: true, data: saved };
+}
+
+function dispatchNewsInputEmails(
+  userId: string,
+  saved: NewsReportWithChildren,
+): Promise<void> {
+  const payload = saved.header.payload;
+  if (!payload || typeof payload !== "object") {
+    return Promise.resolve();
+  }
+
+  const reportType = saved.header.report_type;
+  const reportPeriod = saved.header.report_period;
+  const tasks: Promise<void>[] = [];
+
+  if (reportType === "daily_urgent_scan" && "urgent_news" in payload) {
+    tasks.push(
+      dispatchUrgentRiskWarning(userId, payload as DailyUrgentScanReport),
+    );
+  }
+
+  if (reportType === "weekly_market_review") {
+    tasks.push(
+      dispatchWeeklyRiskSummary(userId, payload as WeeklyMarketReviewReport),
+    );
+  }
+
+  const manualReviewReasons = extractManualReviewReasons(
+    reportType,
+    reportPeriod,
+    saved.children,
+  );
+  if (manualReviewReasons.length > 0) {
+    tasks.push(dispatchManualReviewRequired(userId, manualReviewReasons));
+  }
+
+  return Promise.all(tasks).then(() => undefined);
 }
 
 export async function getNewsReports(

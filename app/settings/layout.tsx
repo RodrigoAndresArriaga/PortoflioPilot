@@ -29,7 +29,7 @@ export default async function SettingsLayout({
             Settings
           </h2>
           <p className="text-muted-foreground">
-            Update your target allocation and watchlist preferences.
+            Update your target allocation, watchlist, and email alert preferences.
           </p>
         </div>
 
