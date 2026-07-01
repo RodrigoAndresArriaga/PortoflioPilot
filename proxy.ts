@@ -6,7 +6,10 @@ export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
-  if (!user && pathname.startsWith("/dashboard")) {
+  if (
+    !user &&
+    (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     return NextResponse.redirect(url);

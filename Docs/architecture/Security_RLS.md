@@ -83,21 +83,77 @@ to authenticated
 using (auth.uid() = id);
 ```
 
-Full migration: `Docs/supabasechema.md`
+Full migration: `supabase/migrations/001_profiles.sql`
+
+---
+
+## B2 Reference — Portfolio Tables
+
+B2 implements RLS on `portfolios`, `holdings`, `target_allocations`, and `watchlist_items`.
+
+Full migration: `supabase/migrations/002_portfolio_schema.sql`
+
+### portfolios and watchlist_items
+
+Standard four-policy pattern on `user_id` (same as the standard pattern above).
+
+### holdings and target_allocations — portfolio ownership guard
+
+`auth.uid() = user_id` alone is not sufficient for child tables. A client could set their own `user_id` but reference another user's `portfolio_id`.
+
+INSERT and UPDATE policies must verify the portfolio belongs to the caller:
+
+```sql
+create policy "Users can insert own holdings"
+on public.holdings
+for insert
+to authenticated
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1 from public.portfolios p
+    where p.id = portfolio_id and p.user_id = auth.uid()
+  )
+);
+
+create policy "Users can update own holdings"
+on public.holdings
+for update
+to authenticated
+using (
+  auth.uid() = user_id
+  and exists (
+    select 1 from public.portfolios p
+    where p.id = portfolio_id and p.user_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1 from public.portfolios p
+    where p.id = portfolio_id and p.user_id = auth.uid()
+  )
+);
+```
+
+The same subquery pattern applies to `target_allocations` insert/update policies.
+
+SELECT and DELETE policies use `auth.uid() = user_id` only.
 
 ---
 
 ## Tables Requiring RLS (All Milestones)
 
-| Table | User Column | Milestone |
-|-------|-------------|-----------|
-| profiles | `id` = auth.uid() | B1 |
-| portfolios | `user_id` | B2 |
-| holdings | `user_id` | B2 |
-| target_allocations | `user_id` | B2 |
-| monthly_plans | `user_id` | B3 |
-| monthly_plan_items | via `monthly_plans.user_id` join or denormalized `user_id` | B3 |
-| manual_news_inputs | `user_id` | B6 |
+| Table | User Column | Milestone | Status |
+|-------|-------------|-----------|--------|
+| profiles | `id` = auth.uid() | B1 | Implemented |
+| portfolios | `user_id` | B2 | Implemented |
+| holdings | `user_id` | B2 | Implemented |
+| target_allocations | `user_id` | B2 | Implemented |
+| watchlist_items | `user_id` | B2 | Implemented |
+| monthly_plans | `user_id` | B3 | Planned |
+| monthly_plan_items | via `monthly_plans.user_id` join or denormalized `user_id` | B3 | Planned |
+| manual_news_inputs | `user_id` | B6 | Planned |
 
 For `monthly_plan_items`, either denormalize `user_id` on the row or use a subquery policy checking ownership through `monthly_plans`.
 
@@ -161,4 +217,4 @@ Rules:
 - No RLS policies deployed
 - No secrets in committed files
 
-Security implementation begins in **B1**.
+Security implementation begins in **B1**. Portfolio table RLS is implemented in **B2**.

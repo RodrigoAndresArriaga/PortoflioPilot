@@ -1,6 +1,6 @@
 # Database Schema
 
-Full table catalog for PortfolioPilot. Only `profiles` is implemented in B1; remaining tables are spec-only until their milestone.
+Full table catalog for PortfolioPilot. `profiles` is implemented in B1; portfolio tables are implemented in B2; remaining tables are spec-only until their milestone.
 
 ---
 
@@ -9,11 +9,12 @@ Full table catalog for PortfolioPilot. Only `profiles` is implemented in B1; rem
 ```
 auth.users
   └── profiles (1:1)
-  └── portfolios (1:many)
+  └── portfolios (1:many, v1: 1:1 via unique user_id)
         ├── holdings (1:many)
         ├── target_allocations (1:many)
         └── monthly_plans (1:many)
               └── monthly_plan_items (1:many)
+  └── watchlist_items (1:many)
   └── manual_news_inputs (1:many)
 ```
 
@@ -36,21 +37,26 @@ One row per authenticated user. Private user settings.
 | `created_at` | timestamptz NOT NULL | default now() |
 | `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
 
-**B1 migration:** see `Docs/supabasechema.md` for full DDL including triggers, signup handler, indexes, and RLS policies.
+**B1 migration:** see `supabase/migrations/001_profiles.sql` and `Docs/supabasechema.md`.
 
 ---
 
 ## portfolios
 
+User-owned portfolio container.
+
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | uuid PK | |
-| `user_id` | uuid FK | references `auth.users(id)` |
-| `name` | text | |
-| `base_currency` | text | |
-| `created_at` | timestamptz | |
+| `id` | uuid PK | default `gen_random_uuid()` |
+| `user_id` | uuid NOT NULL FK | references `auth.users(id)` ON DELETE CASCADE, unique |
+| `name` | text NOT NULL | default `'My Portfolio'` |
+| `base_currency` | text NOT NULL | default `'MXN'` |
+| `created_at` | timestamptz NOT NULL | default now() |
+| `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
 
-v1: one portfolio per user.
+v1: one portfolio per user (`unique (user_id)`).
+
+**B2 migration:** see `supabase/migrations/002_portfolio_schema.sql`.
 
 ---
 
@@ -60,19 +66,21 @@ Current positions owned by the user.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | uuid PK | |
-| `user_id` | uuid FK | references `auth.users(id)` |
-| `portfolio_id` | uuid FK | references `portfolios(id)` |
-| `symbol` | text | e.g. VOO, NVDA |
+| `id` | uuid PK | default `gen_random_uuid()` |
+| `user_id` | uuid NOT NULL FK | references `auth.users(id)` ON DELETE CASCADE |
+| `portfolio_id` | uuid NOT NULL FK | references `portfolios(id)` ON DELETE CASCADE |
+| `symbol` | text NOT NULL | e.g. VOO, NVDA |
 | `asset_name` | text | |
-| `asset_type` | text | ETF / stock / cash / crypto / other |
-| `currency` | text | |
-| `shares` | numeric | optional |
-| `current_value` | numeric | required for weight calculations |
-| `cost_basis` | numeric | |
+| `asset_type` | text NOT NULL | etf / stock / cash / crypto / other |
+| `currency` | text NOT NULL | default `'MXN'` |
+| `shares` | numeric(18,6) | optional |
+| `current_value` | numeric(14,2) NOT NULL | check >= 0; required for weight calculations |
+| `cost_basis` | numeric(14,2) | check >= 0 when set |
 | `broker` | text | optional |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
+| `created_at` | timestamptz NOT NULL | default now() |
+| `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
+
+Constraints: `unique (portfolio_id, symbol)`.
 
 Weights are based on **current market value**, not cost basis alone.
 
@@ -84,14 +92,39 @@ Target weight per symbol within a portfolio bucket.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | uuid PK | |
-| `user_id` | uuid FK | references `auth.users(id)` |
-| `portfolio_id` | uuid FK | references `portfolios(id)` |
-| `symbol` | text | |
-| `bucket` | text | core_etf / growth / individual_stock / cash |
-| `target_percent` | numeric | |
-| `max_percent` | numeric | cap for individual stocks |
-| `enabled` | boolean | |
+| `id` | uuid PK | default `gen_random_uuid()` |
+| `user_id` | uuid NOT NULL FK | references `auth.users(id)` ON DELETE CASCADE |
+| `portfolio_id` | uuid NOT NULL FK | references `portfolios(id)` ON DELETE CASCADE |
+| `symbol` | text NOT NULL | |
+| `bucket` | text NOT NULL | core_etf / growth / individual_stock / cash |
+| `target_percent` | numeric(5,2) NOT NULL | check 0–100 |
+| `max_percent` | numeric(5,2) | cap for individual stocks; check 0–100 when set |
+| `enabled` | boolean NOT NULL | default true |
+| `created_at` | timestamptz NOT NULL | default now() |
+| `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
+
+Constraints: `unique (portfolio_id, symbol)`.
+
+---
+
+## watchlist_items
+
+User-curated symbols for monitoring and news-risk prompts. User-scoped (not tied to a portfolio).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid PK | default `gen_random_uuid()` |
+| `user_id` | uuid NOT NULL FK | references `auth.users(id)` ON DELETE CASCADE |
+| `symbol` | text NOT NULL | |
+| `asset_name` | text | |
+| `asset_type` | text | etf / stock (nullable) |
+| `bucket` | text | core_etf / growth (nullable) |
+| `enabled` | boolean NOT NULL | default true |
+| `sort_order` | int NOT NULL | default 0 |
+| `created_at` | timestamptz NOT NULL | default now() |
+| `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
+
+Constraints: `unique (user_id, symbol)`.
 
 ---
 
@@ -176,8 +209,18 @@ create table if not exists public.profiles (
 );
 
 -- updated_at trigger, handle_new_user trigger, RLS policies, indexes
--- see Docs/supabasechema.md for full migration
+-- see supabase/migrations/001_profiles.sql for full migration
 ```
+
+---
+
+## B2 Implemented Subset — portfolio DDL
+
+Full migration: `supabase/migrations/002_portfolio_schema.sql`
+
+Tables: `portfolios`, `holdings`, `target_allocations`, `watchlist_items`
+
+TypeScript types: `types/database.ts`
 
 ---
 
@@ -185,10 +228,11 @@ create table if not exists public.profiles (
 
 | Table | Milestone | Status |
 |-------|-----------|--------|
-| profiles | B1 | Spec ready |
-| portfolios | B2 | Spec only |
-| holdings | B2 | Spec only |
-| target_allocations | B2 | Spec only |
+| profiles | B1 | Implemented — `001_profiles.sql` |
+| portfolios | B2 | Implemented — `002_portfolio_schema.sql` |
+| holdings | B2 | Implemented — `002_portfolio_schema.sql` |
+| target_allocations | B2 | Implemented — `002_portfolio_schema.sql` |
+| watchlist_items | B2 | Implemented — `002_portfolio_schema.sql` |
 | monthly_plans | B3 | Spec only |
 | monthly_plan_items | B3 | Spec only |
 | manual_news_inputs | B6 | Spec only |
