@@ -88,7 +88,7 @@ export async function upsertWatchlist(
   }
 
   revalidatePath("/dashboard");
-  revalidatePath("/settings/watchlist");
+  revalidatePath("/settings");
 
   return { ok: true, data };
 }

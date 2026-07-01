@@ -6,10 +6,9 @@ import {
   BookOpenIcon,
   BriefcaseIcon,
   CalendarIcon,
-  EyeIcon,
   LayoutDashboardIcon,
   NewspaperIcon,
-  PieChartIcon,
+  SettingsIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -45,14 +44,9 @@ const navItems = [
     icon: NewspaperIcon,
   },
   {
-    href: "/settings/allocations",
-    label: "Allocations",
-    icon: PieChartIcon,
-  },
-  {
-    href: "/settings/watchlist",
-    label: "Watchlist",
-    icon: EyeIcon,
+    href: "/settings",
+    label: "Settings",
+    icon: SettingsIcon,
   },
 ] as const;
 
@@ -77,7 +71,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navItems.map((item) => {
           const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+            item.href === "/settings"
+              ? pathname === "/settings" || pathname.startsWith("/settings/")
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
 
           return (

@@ -33,7 +33,7 @@ export async function refreshPortfolioPrices(): Promise<RefreshPricesResult> {
   revalidatePath("/holdings");
   revalidatePath("/dashboard");
   revalidatePath("/monthly-plan");
-  revalidatePath("/settings/allocations");
+  revalidatePath("/settings");
 
   return { ok: true };
 }

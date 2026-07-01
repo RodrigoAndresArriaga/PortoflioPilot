@@ -1,5 +1,8 @@
-import { redirect } from "next/navigation";
+import { SettingsPageContent } from "@/components/settings/settings-page-content";
+import { getSettingsPageData } from "@/lib/server/settings";
 
-export default function SettingsPage() {
-  redirect("/settings/allocations");
+export default async function SettingsPage() {
+  const data = await getSettingsPageData();
+
+  return <SettingsPageContent {...data} />;
 }

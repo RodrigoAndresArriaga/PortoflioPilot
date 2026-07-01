@@ -71,7 +71,7 @@ export async function updateEmailPreferences(
     };
   }
 
-  revalidatePath("/settings/email");
+  revalidatePath("/settings");
 
   return { ok: true, data: emailPreferencesSchema.parse(data) };
 }

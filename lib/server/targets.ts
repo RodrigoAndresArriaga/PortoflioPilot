@@ -200,7 +200,7 @@ export async function upsertTargetAllocations(
   }
 
   revalidatePath("/dashboard");
-  revalidatePath("/settings/allocations");
+  revalidatePath("/settings");
 
   const snapshot = await getTargetAllocations();
   if (!snapshot) {

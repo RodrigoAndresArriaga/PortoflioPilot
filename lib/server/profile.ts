@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { parseZodError, requireAuthUser } from "@/lib/server/auth";
+import { getUserPortfolio } from "@/lib/server/portfolio";
 import { createClient } from "@/lib/supabase/server";
 import {
   baseCurrencySchema,
@@ -130,7 +131,19 @@ export async function updateUserProfile(
     return { ok: false, error: error?.message ?? "Failed to update profile." };
   }
 
+  if (payload.base_currency !== undefined) {
+    const portfolio = await getUserPortfolio(user.id);
+    if (portfolio) {
+      await supabase
+        .from("portfolios")
+        .update({ base_currency: payload.base_currency })
+        .eq("id", portfolio.id);
+    }
+  }
+
   revalidatePath("/dashboard");
+  revalidatePath("/settings");
+  revalidatePath("/monthly-plan");
 
   return { ok: true, data };
 }
