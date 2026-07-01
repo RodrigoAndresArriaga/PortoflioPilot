@@ -1,3 +1,24 @@
+export type RecommendationCandidate = {
+  symbol: string;
+  asset_kind: "etf" | "stock";
+  recommendation_score: number;
+  technical_score: number;
+  news_modifier_score: number;
+  risk_score: number;
+  concentration_flag: boolean;
+  manual_review_required: boolean;
+  blocked: boolean;
+  blocked_reason: string | null;
+  decision_basis: string;
+  reason: string;
+  recommended_amount: number;
+};
+
+export type SizedRecommendation = RecommendationCandidate & {
+  recommended_amount: number;
+};
+
+// legacy types used by news-modifier tests
 export type EngineHolding = {
   symbol: string;
   current_value: number;

@@ -28,7 +28,7 @@ export default async function SettingsLayout({
             Settings
           </h2>
           <p className="text-muted-foreground">
-            Manage your profile, investment preferences, target allocation,
+            Manage your profile, investment strategy, watchlist,
             watchlist, and email alerts.
           </p>
         </div>

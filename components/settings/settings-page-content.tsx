@@ -4,7 +4,7 @@ import { EmailPreferencesForm } from "./email-preferences-form";
 import { ProfileSettingsForm } from "./profile-settings-form";
 import { SettingsAnchorNav } from "./settings-anchor-nav";
 import { SettingsSection } from "./settings-section";
-import { TargetAllocationSection } from "./target-allocation-section";
+import { StrategySection } from "./strategy-section";
 import { WatchlistSection } from "./watchlist-section";
 
 type SettingsPageContentProps = SettingsPageData;
@@ -13,7 +13,6 @@ export function SettingsPageContent({
   profile,
   email,
   emailPreferences,
-  allocation,
   watchlist,
 }: SettingsPageContentProps) {
   return (
@@ -22,11 +21,7 @@ export function SettingsPageContent({
 
       <ProfileSettingsForm profile={profile} email={email} />
 
-      <TargetAllocationSection
-        initialValue={allocation.initialValue}
-        riskProfile={profile.risk_profile}
-        holdings={allocation.holdings}
-      />
+      <StrategySection profile={profile} />
 
       <WatchlistSection
         initialItems={watchlist.initialItems}

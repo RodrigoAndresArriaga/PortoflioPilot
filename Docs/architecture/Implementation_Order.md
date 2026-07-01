@@ -15,6 +15,7 @@ Milestone-ordered build plan for PortfolioPilot. Each milestone has a clear entr
 | **B5** | Risk and technical algorithms | Phase 5 | Planned |
 | **B6** | Manual ChatGPT news layer | Phase 6 | Planned |
 | **B7** | Email alerts (Resend) | Phase 7 | Planned |
+| **P1** | Remove target allocations; decision engine primary | Phase 3/4 refactor | Done |
 | **B8+** | Later improvements (market data API, backtesting, sharing) | Phase 8 | Planned |
 
 ---
@@ -176,7 +177,7 @@ Note: **free Yahoo Finance auto-valuation** is B4.5, not B8+.
 K1 (scaffold)
   └── B1 (auth + profiles)
         └── B2 (portfolio input)
-              └── B3 (allocation engine)
+              └── P1 (decision engine primary; targets removed)
                     ├── B4.5 (market data / auto valuation)
                     ├── B4 (dashboard)
                     ├── B5 (algorithms)

@@ -35,8 +35,13 @@ type MonthlyPlanManagerProps = {
 function toEditableItems(plan: MonthlyPlanWithItems): MonthlyPlanItemInput[] {
   return plan.items.map((item) => ({
     symbol: item.symbol,
-    target_weight: item.target_weight,
-    current_weight: item.current_weight,
+    recommendation_score: item.recommendation_score,
+    technical_score: item.technical_score,
+    news_modifier_score: item.news_modifier_score,
+    risk_score: item.risk_score,
+    concentration_flag: item.concentration_flag,
+    manual_review_required: item.manual_review_required,
+    decision_basis: item.decision_basis,
     recommended_amount: item.recommended_amount,
     adjusted_amount: item.adjusted_amount,
     reason: item.reason,

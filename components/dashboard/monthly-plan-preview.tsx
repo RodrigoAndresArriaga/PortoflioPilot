@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import {
   formatPlanCurrency,
-  formatWeightPercent,
   isCashSymbol,
 } from "@/lib/monthly-plan/format";
 import type { MonthlyPlanWithItems } from "@/types/database";
@@ -76,10 +75,11 @@ export function MonthlyPlanPreview({ monthlyPlan }: MonthlyPlanPreviewProps) {
               >
                 <div className="space-y-1">
                   <p className="font-medium">{item.symbol.trim().toUpperCase()}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Current {formatWeightPercent(item.current_weight)} · Target{" "}
-                    {formatWeightPercent(item.target_weight)}
-                  </p>
+                  {item.recommendation_score != null ? (
+                    <p className="text-sm text-muted-foreground">
+                      Score {item.recommendation_score.toFixed(1)}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">Buy</Badge>

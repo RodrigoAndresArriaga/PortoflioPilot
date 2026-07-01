@@ -2,7 +2,12 @@ import { isCashSymbol } from "@/lib/monthly-plan/format";
 import { applyDriftToResult } from "@/lib/engine/drift";
 import { roundMoney, sumValues } from "@/lib/engine/math";
 import type { AllocationAssetResult } from "@/lib/engine/types";
-import type { TargetBucketKey } from "@/types/database";
+
+type TargetBucketKey =
+  | "core_etf"
+  | "growth_tech"
+  | "cash_reserve"
+  | "individual_stock";
 
 const SWEEP_EPSILON = 0.01;
 

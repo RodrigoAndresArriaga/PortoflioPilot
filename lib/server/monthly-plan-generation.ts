@@ -1,20 +1,10 @@
-import { computeTargetAllocation } from "@/lib/engine/allocation";
-import type { EngineTargetAllocation } from "@/lib/engine/types";
-import {
-  buildRemainderSweepContext,
-  normalizeBuysToMonthlyBudget,
-} from "@/lib/engine/sweep-remainder";
-import {
-  buildBucketBySymbol,
-  resolveBucketModeAssets,
-} from "@/lib/allocation/bucket-mapping";
-import { normalizePlanSymbol } from "@/lib/monthly-plan/format";
-import type { TargetAllocationsSnapshot } from "@/lib/server/targets";
+import { allocateMonthlyBudget } from "@/lib/engine/final-position-sizing";
+import { newsInputsToSignals } from "@/lib/engine/news-signals";
+import type { NewsModifierSignal } from "@/lib/engine/news-modifier";
+import type { AssetScoreResult } from "@/lib/engine/scores";
 import { baseCurrencySchema } from "@/lib/validation/common";
 import type { SaveMonthlyPlanInput } from "@/lib/validation/monthly-plan";
-import type { Holding, Profile } from "@/types/database";
-
-// B5 can consume getPortfolioMarketSnapshot() technical scores here for position sizing.
+import type { Holding, Profile, WatchlistItem } from "@/types/database";
 
 // current month key in UTC
 export function getCurrentMonthKey(): string {
@@ -24,134 +14,79 @@ export function getCurrentMonthKey(): string {
   return `${year}-${month}`;
 }
 
-// map allocation snapshot to engine target weights
-export function resolveEngineTargets(
-  snapshot: TargetAllocationsSnapshot,
-  holdings: Holding[],
-): { ok: true; data: EngineTargetAllocation[] } | { ok: false; error: string } {
-  if (snapshot.allocation_mode === "symbol") {
-    const enabledAssets = snapshot.target_assets.filter((asset) => asset.enabled);
-
-    if (enabledAssets.length === 0) {
-      return {
-        ok: false,
-        error: "Add at least one symbol target before generating a plan.",
-      };
-    }
-
-    return {
-      ok: true,
-      data: enabledAssets.map((asset) => ({
-        symbol: normalizePlanSymbol(asset.symbol),
-        target_weight: (asset.target_percent ?? 0) / 100,
-      })),
-    };
-  }
-
-  const bucketModeAssets = resolveBucketModeAssets(snapshot, holdings);
-
-  if (bucketModeAssets.length === 0) {
-    return {
-      ok: false,
-      error:
-        "No holdings could be mapped to your allocation buckets. Add holdings or update targets.",
-    };
-  }
-
-  const enabledBuckets = snapshot.target_buckets.filter((bucket) => bucket.enabled);
-  const holdingSymbols = new Set(
-    holdings.map((holding) => normalizePlanSymbol(holding.symbol)),
-  );
-  const weightBySymbol = new Map<string, number>();
-
-  for (const bucket of enabledBuckets) {
-    const assetsInBucket = bucketModeAssets.filter(
-      (asset) => asset.bucket_key === bucket.bucket_key,
-    );
-    const symbolsInBucket = assetsInBucket
-      .map((asset) => normalizePlanSymbol(asset.symbol))
-      .filter((symbol) => holdingSymbols.has(symbol));
-
-    if (symbolsInBucket.length === 0) {
-      continue;
-    }
-
-    const weightEach = bucket.target_percent / 100 / symbolsInBucket.length;
-
-    for (const symbol of symbolsInBucket) {
-      weightBySymbol.set(symbol, (weightBySymbol.get(symbol) ?? 0) + weightEach);
-    }
-  }
-
-  if (weightBySymbol.size === 0) {
-    return {
-      ok: false,
-      error:
-        "No holdings match your bucket targets. Add holdings or update allocations.",
-    };
-  }
-
-  return {
-    ok: true,
-    data: Array.from(weightBySymbol.entries()).map(([symbol, target_weight]) => ({
-      symbol,
-      target_weight,
-    })),
-  };
-}
-
 type BuildMonthlyPlanPayloadInput = {
   profile: Profile;
   holdings: Holding[];
-  targets: TargetAllocationsSnapshot;
+  watchlist: WatchlistItem[];
   month: string;
+  technicalScores?: AssetScoreResult[];
+  newsSignals?: NewsModifierSignal[];
 };
 
-// run E1 and map results to a save payload
+// run recommendation engine and map results to a save payload
 export function buildMonthlyPlanPayload(
   input: BuildMonthlyPlanPayloadInput,
 ): { ok: true; data: SaveMonthlyPlanInput } | { ok: false; error: string } {
-  const { profile, holdings, targets, month } = input;
+  const { profile, holdings, watchlist, month } = input;
 
-  const resolvedTargets = resolveEngineTargets(targets, holdings);
-  if (!resolvedTargets.ok) {
-    return resolvedTargets;
+  if (holdings.length === 0 && watchlist.length === 0) {
+    return {
+      ok: false,
+      error: "Add at least one holding or watchlist symbol before generating a plan.",
+    };
   }
 
-  const results = computeTargetAllocation({
-    holdings: holdings.map((holding) => ({
-      symbol: holding.symbol,
-      current_value: holding.current_value,
-    })),
-    target_allocations: resolvedTargets.data,
-    monthly_investment_amount: profile.monthly_investment_amount,
+  const nonCashHoldings = holdings.filter(
+    (holding) => holding.asset_type !== "cash",
+  );
+
+  if (nonCashHoldings.length === 0 && watchlist.length === 0) {
+    return {
+      ok: false,
+      error: "Add at least one investable holding or watchlist symbol.",
+    };
+  }
+
+  const newsSignals = input.newsSignals ?? [];
+  const technicalScores = input.technicalScores ?? [];
+
+  const sized = allocateMonthlyBudget({
+    profile,
+    holdings,
+    watchlist,
+    newsSignals,
+    technicalScores,
+    monthlyAmount: profile.monthly_investment_amount,
   });
-
-  const bucketBySymbol = buildBucketBySymbol(targets, holdings);
-  const enabledBuckets = targets.target_buckets
-    .filter((bucket) => bucket.enabled)
-    .map((bucket) => bucket.bucket_key);
-  const cashBucket = targets.target_buckets.find(
-    (bucket) => bucket.bucket_key === "cash_reserve" && bucket.enabled,
-  );
-
-  const sweptResults = normalizeBuysToMonthlyBudget(
-    results,
-    buildRemainderSweepContext({
-      monthlyAmount: profile.monthly_investment_amount,
-      targetAllocations: resolvedTargets.data,
-      bucketBySymbol,
-      enabledBuckets,
-      cashBucketPercent: cashBucket?.target_percent,
-    }),
-    holdings.map((holding) => ({
-      symbol: holding.symbol,
-      current_value: holding.current_value,
-    })),
-  );
 
   const currencyResult = baseCurrencySchema.safeParse(profile.base_currency);
   const currency = currencyResult.success ? currencyResult.data : "MXN";
+
+  const items = sized
+    .filter(
+      (candidate) =>
+        candidate.recommended_amount > 0 || candidate.blocked,
+    )
+    .map((candidate) => ({
+      symbol: candidate.symbol,
+      recommendation_score: candidate.recommendation_score,
+      technical_score: candidate.technical_score,
+      news_modifier_score: candidate.news_modifier_score,
+      risk_score: candidate.risk_score,
+      concentration_flag: candidate.concentration_flag,
+      manual_review_required: candidate.manual_review_required,
+      decision_basis: candidate.decision_basis,
+      recommended_amount: candidate.recommended_amount,
+      adjusted_amount: candidate.recommended_amount,
+      reason: candidate.reason,
+    }));
+
+  if (items.length === 0) {
+    return {
+      ok: false,
+      error: "No buy recommendations could be generated for this month.",
+    };
+  }
 
   return {
     ok: true,
@@ -160,14 +95,9 @@ export function buildMonthlyPlanPayload(
       monthly_amount: profile.monthly_investment_amount,
       currency,
       status: "draft",
-      items: sweptResults.map((result) => ({
-        symbol: result.symbol,
-        target_weight: result.target_weight,
-        current_weight: result.current_weight,
-        recommended_amount: result.recommended_buy,
-        adjusted_amount: result.recommended_buy,
-        reason: result.reason,
-      })),
+      items,
     },
   };
 }
+
+export { newsInputsToSignals };

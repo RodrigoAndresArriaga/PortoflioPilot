@@ -1,11 +1,5 @@
 export type AssetType = "etf" | "stock" | "cash" | "crypto" | "other";
 
-export type AllocationBucket =
-  | "core_etf"
-  | "growth"
-  | "individual_stock"
-  | "cash";
-
 export type WatchlistAssetType = "etf" | "stock";
 
 export type WatchlistBucket = "core_etf" | "growth";
@@ -18,6 +12,9 @@ export type Profile = {
   investment_day: number;
   risk_profile: string;
   time_horizon: string;
+  broad_etf_priority: boolean;
+  cash_reserve_percent: number;
+  max_individual_stock_percent: number;
   onboarding_completed: boolean;
   email_alerts_enabled: boolean;
   email_monthly_plan_ready: boolean;
@@ -38,20 +35,11 @@ export type EmailNotificationLog = {
   sent_at: string;
 };
 
-export type AllocationMode = "auto" | "bucket" | "symbol";
-
-export type TargetBucketKey =
-  | "core_etf"
-  | "growth_tech"
-  | "cash_reserve"
-  | "individual_stock";
-
 export type Portfolio = {
   id: string;
   user_id: string;
   name: string;
   base_currency: string;
-  allocation_mode: AllocationMode;
   created_at: string;
   updated_at: string;
 };
@@ -82,45 +70,6 @@ export type SymbolMarketCache = {
   quoted_at: string | null;
   history_json: unknown;
   history_fetched_at: string | null;
-  updated_at: string;
-};
-
-export type TargetAllocation = {
-  id: string;
-  user_id: string;
-  portfolio_id: string;
-  symbol: string;
-  bucket: AllocationBucket;
-  target_percent: number;
-  max_percent: number | null;
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-export type TargetBucket = {
-  id: string;
-  user_id: string;
-  portfolio_id: string;
-  bucket_key: TargetBucketKey;
-  target_percent: number;
-  min_percent: number | null;
-  max_percent: number | null;
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-export type TargetAsset = {
-  id: string;
-  user_id: string;
-  portfolio_id: string;
-  symbol: string;
-  bucket_key: TargetBucketKey;
-  target_percent: number | null;
-  max_percent: number | null;
-  enabled: boolean;
-  created_at: string;
   updated_at: string;
 };
 
@@ -155,8 +104,13 @@ export type MonthlyPlanItem = {
   id: string;
   monthly_plan_id: string;
   symbol: string;
-  target_weight: number;
-  current_weight: number;
+  recommendation_score: number | null;
+  technical_score: number | null;
+  news_modifier_score: number | null;
+  risk_score: number | null;
+  concentration_flag: boolean;
+  manual_review_required: boolean;
+  decision_basis: string | null;
   recommended_amount: number;
   adjusted_amount: number;
   reason: string;
@@ -243,45 +197,6 @@ export type HoldingUpdate = Partial<
   Omit<Holding, "id" | "user_id" | "created_at" | "updated_at">
 >;
 
-export type TargetAllocationInsert = Omit<
-  TargetAllocation,
-  "id" | "created_at" | "updated_at"
-> & {
-  id?: string;
-  created_at?: string;
-  updated_at?: string;
-};
-
-export type TargetAllocationUpdate = Partial<
-  Omit<TargetAllocation, "id" | "user_id" | "created_at" | "updated_at">
->;
-
-export type TargetBucketInsert = Omit<
-  TargetBucket,
-  "id" | "created_at" | "updated_at"
-> & {
-  id?: string;
-  created_at?: string;
-  updated_at?: string;
-};
-
-export type TargetBucketUpdate = Partial<
-  Omit<TargetBucket, "id" | "user_id" | "created_at" | "updated_at">
->;
-
-export type TargetAssetInsert = Omit<
-  TargetAsset,
-  "id" | "created_at" | "updated_at"
-> & {
-  id?: string;
-  created_at?: string;
-  updated_at?: string;
-};
-
-export type TargetAssetUpdate = Partial<
-  Omit<TargetAsset, "id" | "user_id" | "created_at" | "updated_at">
->;
-
 export type WatchlistItemInsert = Omit<
   WatchlistItem,
   "id" | "created_at" | "updated_at"
@@ -350,21 +265,6 @@ export type Database = {
         Row: Holding;
         Insert: HoldingInsert;
         Update: HoldingUpdate;
-      };
-      target_allocations: {
-        Row: TargetAllocation;
-        Insert: TargetAllocationInsert;
-        Update: TargetAllocationUpdate;
-      };
-      target_buckets: {
-        Row: TargetBucket;
-        Insert: TargetBucketInsert;
-        Update: TargetBucketUpdate;
-      };
-      target_assets: {
-        Row: TargetAsset;
-        Insert: TargetAssetInsert;
-        Update: TargetAssetUpdate;
       };
       watchlist_items: {
         Row: WatchlistItem;

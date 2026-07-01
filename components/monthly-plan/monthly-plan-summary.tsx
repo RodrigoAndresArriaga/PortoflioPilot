@@ -34,7 +34,7 @@ export function MonthlyPlanSummaryCard({ plan, items }: MonthlyPlanSummaryProps)
           </Badge>
         </div>
         <CardDescription>
-          Recommended manual buys based on your target allocation.
+          Recommended manual buys from the recommendation engine.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">

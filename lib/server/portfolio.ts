@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { parseZodError, requireAuthUser } from "@/lib/server/auth";
 import { createClient } from "@/lib/supabase/server";
-import { allocationModeSchema, baseCurrencySchema } from "@/lib/validation/common";
+import { baseCurrencySchema } from "@/lib/validation/common";
 import type { Portfolio } from "@/types/database";
 
 export type CreatePortfolioResult =
@@ -15,7 +15,6 @@ export type CreatePortfolioResult =
 const createPortfolioSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   base_currency: baseCurrencySchema.optional(),
-  allocation_mode: allocationModeSchema.optional(),
 });
 
 export async function getUserPortfolio(userId: string): Promise<Portfolio | null> {
@@ -91,7 +90,6 @@ export async function createPortfolio(
       user_id: user.id,
       name: payload.name?.trim() || "My Portfolio",
       base_currency: payload.base_currency ?? "MXN",
-      allocation_mode: payload.allocation_mode ?? "bucket",
     })
     .select("*")
     .single();

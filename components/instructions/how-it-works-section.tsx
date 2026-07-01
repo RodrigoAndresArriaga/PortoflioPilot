@@ -17,8 +17,8 @@ export function HowItWorksSection() {
         </h3>
         <p className="text-sm text-muted-foreground">
           PortfolioPilot is a long-term investing cockpit. You maintain holdings
-          and targets; the app calculates allocation gaps and monthly buy
-          amounts. You execute every trade manually in your brokerage.
+          and a watchlist; the recommendation engine ranks buy opportunities and
+          monthly amounts. You execute every trade manually in your brokerage.
         </p>
       </div>
 
@@ -26,14 +26,14 @@ export function HowItWorksSection() {
         <CardHeader>
           <CardTitle>End-to-end flow</CardTitle>
           <CardDescription>
-            ChatGPT provides research context. PortfolioPilot applies allocation
-            and risk rules. You stay in control of execution.
+            ChatGPT provides research context. PortfolioPilot applies recommendation
+            scoring and risk rules. You stay in control of execution.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
             <li>
-              Set up holdings, target allocation, and your{" "}
+              Set up holdings, strategy preferences, and your{" "}
               <Link
                 href="/settings/watchlist"
                 className="font-medium text-foreground underline-offset-4 hover:underline"

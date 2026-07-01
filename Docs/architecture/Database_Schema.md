@@ -1,6 +1,6 @@
 # Database Schema
 
-Full table catalog for PortfolioPilot. `profiles` is implemented in B1; portfolio tables are implemented in B2; remaining tables are spec-only until their milestone.
+Full table catalog for PortfolioPilot. **P1 (migration 008)** removed hard target allocation tables (`target_allocations`, `target_buckets`, `target_assets`). Monthly plans now store recommendation scores instead of target/current weights.
 
 ---
 
@@ -11,7 +11,6 @@ auth.users
   └── profiles (1:1)
   └── portfolios (1:many, v1: 1:1 via unique user_id)
         ├── holdings (1:many)
-        ├── target_allocations (1:many)
         └── monthly_plans (1:many)
               └── monthly_plan_items (1:many)
   └── watchlist_items (1:many)
@@ -33,6 +32,9 @@ One row per authenticated user. Private user settings.
 | `investment_day` | int NOT NULL | default 1, check 1–31 |
 | `risk_profile` | text NOT NULL | conservative / balanced / growth / aggressive_growth |
 | `time_horizon` | text NOT NULL | 1_3_years / 3_5_years / 5_10_years / 10_plus_years |
+| `broad_etf_priority` | boolean NOT NULL | default true; boosts broad ETF recommendation scores |
+| `cash_reserve_percent` | numeric(5,2) NOT NULL | default 5; % of monthly amount held as cash |
+| `max_individual_stock_percent` | numeric(5,2) NOT NULL | default 15; concentration block threshold |
 | `onboarding_completed` | boolean NOT NULL | default false |
 | `created_at` | timestamptz NOT NULL | default now() |
 | `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
@@ -88,24 +90,9 @@ Weights are based on **current market value**, not cost basis alone.
 
 ---
 
-## target_allocations
+## target_allocations (removed in P1)
 
-Target weight per symbol within a portfolio bucket.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | uuid PK | default `gen_random_uuid()` |
-| `user_id` | uuid NOT NULL FK | references `auth.users(id)` ON DELETE CASCADE |
-| `portfolio_id` | uuid NOT NULL FK | references `portfolios(id)` ON DELETE CASCADE |
-| `symbol` | text NOT NULL | |
-| `bucket` | text NOT NULL | core_etf / growth / individual_stock / cash |
-| `target_percent` | numeric(5,2) NOT NULL | check 0–100 |
-| `max_percent` | numeric(5,2) | cap for individual stocks; check 0–100 when set |
-| `enabled` | boolean NOT NULL | default true |
-| `created_at` | timestamptz NOT NULL | default now() |
-| `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
-
-Constraints: `unique (portfolio_id, symbol)`.
+Dropped in `supabase/migrations/008_remove_target_allocations.sql` along with `target_buckets` and `target_assets`. Strategy preferences live on `profiles`; buy recommendations come from the decision engine.
 
 ---
 
@@ -161,11 +148,16 @@ Per-symbol line items within a monthly plan.
 | `id` | uuid PK | default `gen_random_uuid()` |
 | `monthly_plan_id` | uuid NOT NULL FK | references `monthly_plans(id)` ON DELETE CASCADE |
 | `symbol` | text NOT NULL | normalized uppercase |
-| `target_weight` | numeric(8,4) NOT NULL | 0–1 decimal |
-| `current_weight` | numeric(8,4) NOT NULL | 0–1 decimal |
+| `recommendation_score` | numeric(6,2) | composite engine score |
+| `technical_score` | numeric(6,2) | technical composite |
+| `news_modifier_score` | numeric(6,2) | news bias score |
+| `risk_score` | numeric(6,2) | risk-adjusted score |
+| `concentration_flag` | boolean NOT NULL | default false |
+| `manual_review_required` | boolean NOT NULL | default false |
+| `decision_basis` | text | engine rationale summary |
 | `recommended_amount` | numeric(14,2) NOT NULL | check >= 0; engine output |
-| `adjusted_amount` | numeric(14,2) NOT NULL | check >= 0; equals recommended until news layer |
-| `reason` | text NOT NULL | engine status reason |
+| `adjusted_amount` | numeric(14,2) NOT NULL | check >= 0; user-editable buy amount |
+| `reason` | text NOT NULL | human-readable status |
 | `created_at` | timestamptz NOT NULL | default now() |
 
 Constraints: `unique (monthly_plan_id, symbol)`.
@@ -267,7 +259,7 @@ TypeScript types: `types/database.ts`
 | portfolios | B2 | Implemented — `002_portfolio_schema.sql` |
 | holdings | B2 | Implemented — `002_portfolio_schema.sql` |
 | holdings quote columns | B4.5 | Implemented — `005_market_data.sql` |
-| target_allocations | B2 | Implemented — `002_portfolio_schema.sql` |
+| target_allocations | B2 | **Removed P1** — `008_remove_target_allocations.sql` |
 | watchlist_items | B2 | Implemented — `002_portfolio_schema.sql` |
 | symbol_market_cache | B4.5 | Implemented — `005_market_data.sql` |
 | monthly_plans | B4 | Implemented — `004_monthly_plans.sql` |

@@ -15,70 +15,41 @@ const timeHorizonSchema = z.enum([
   "10_plus_years",
 ]);
 const assetTypeSchema = z.enum(["etf", "stock", "cash", "crypto", "other"]);
-const allocationBucketSchema = z.enum([
-  "core_etf",
-  "growth",
-  "individual_stock",
-  "cash",
-]);
 const watchlistAssetTypeSchema = z.enum(["etf", "stock"]);
 const watchlistBucketSchema = z.enum(["core_etf", "growth"]);
 
-const onboardingPayloadSchema = z
-  .object({
-    base_currency: baseCurrencySchema,
-    monthly_investment_amount: z.coerce.number().min(0),
-    investment_day: z.coerce.number().int().min(1).max(31),
-    risk_profile: riskProfileSchema,
-    time_horizon: timeHorizonSchema,
-    holdings: z
-      .array(
-        z.object({
-          symbol: z.string().trim().min(1),
-          asset_name: z.string().nullable().optional(),
-          asset_type: assetTypeSchema,
-          currency: baseCurrencySchema,
-          current_value: z.coerce.number().min(0),
-          cost_basis: z.coerce.number().min(0).nullable().optional(),
-          shares: z.coerce.number().min(0).nullable().optional(),
-          broker: z.string().nullable().optional(),
-        }),
-      )
-      .min(1),
-    target_allocations: z
-      .array(
-        z.object({
-          symbol: z.string().trim().min(1),
-          bucket: allocationBucketSchema,
-          target_percent: z.coerce.number().min(0).max(100),
-        }),
-      )
-      .min(1),
-    watchlist: z
-      .array(
-        z.object({
-          symbol: z.string().trim().min(1),
-          asset_name: z.string().nullable().optional(),
-          asset_type: watchlistAssetTypeSchema.nullable().optional(),
-          bucket: watchlistBucketSchema.nullable().optional(),
-          sort_order: z.number().int().min(0),
-        }),
-      )
-      .min(1),
-  })
-  .superRefine((data, ctx) => {
-    const sum = data.target_allocations.reduce(
-      (total, row) => total + row.target_percent,
-      0,
-    );
-    if (Math.abs(sum - 100) > 0.01) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Target allocations must sum to 100%",
-        path: ["target_allocations"],
-      });
-    }
-  });
+const onboardingPayloadSchema = z.object({
+  base_currency: baseCurrencySchema,
+  monthly_investment_amount: z.coerce.number().min(0),
+  investment_day: z.coerce.number().int().min(1).max(31),
+  risk_profile: riskProfileSchema,
+  time_horizon: timeHorizonSchema,
+  holdings: z
+    .array(
+      z.object({
+        symbol: z.string().trim().min(1),
+        asset_name: z.string().nullable().optional(),
+        asset_type: assetTypeSchema,
+        currency: baseCurrencySchema,
+        current_value: z.coerce.number().min(0),
+        cost_basis: z.coerce.number().min(0).nullable().optional(),
+        shares: z.coerce.number().min(0).nullable().optional(),
+        broker: z.string().nullable().optional(),
+      }),
+    )
+    .min(1),
+  watchlist: z
+    .array(
+      z.object({
+        symbol: z.string().trim().min(1),
+        asset_name: z.string().nullable().optional(),
+        asset_type: watchlistAssetTypeSchema.nullable().optional(),
+        bucket: watchlistBucketSchema.nullable().optional(),
+        sort_order: z.number().int().min(0),
+      }),
+    )
+    .min(1),
+});
 
 const samplePayload = {
   base_currency: "MXN",
@@ -117,11 +88,6 @@ const samplePayload = {
       shares: null,
       broker: null,
     },
-  ],
-  target_allocations: [
-    { symbol: "VOO", bucket: "core_etf", target_percent: 70 },
-    { symbol: "QQQ", bucket: "growth", target_percent: 20 },
-    { symbol: "CASH", bucket: "cash", target_percent: 10 },
   ],
   watchlist: [
     {
@@ -167,7 +133,6 @@ async function verifyTables() {
     "profiles",
     "portfolios",
     "holdings",
-    "target_allocations",
     "watchlist_items",
   ];
 
@@ -183,7 +148,7 @@ async function main() {
   const parsed = onboardingPayloadSchema.parse(samplePayload);
   console.log("PASS: sample onboarding payload validates");
   console.log(`  currency=${parsed.base_currency} amount=${parsed.monthly_investment_amount}`);
-  console.log(`  holdings=${parsed.holdings.length} allocations=${parsed.target_allocations.length} watchlist=${parsed.watchlist.length}`);
+  console.log(`  holdings=${parsed.holdings.length} watchlist=${parsed.watchlist.length}`);
 
   await verifyTables();
   console.log("PASS: all onboarding write tables are reachable");

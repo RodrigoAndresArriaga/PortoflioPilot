@@ -45,12 +45,14 @@ export type StockFactorInputs = {
 export type AssetScoreInput = {
   symbol: string;
   asset_kind: "etf" | "stock";
-  target_allocation_gap_score: number;
   momentum: MomentumInputs;
   trend: TrendInputs;
   volatility: VolatilityInputs;
+  diversification_score: number;
+  user_fit_score: number;
   stock_factors?: StockFactorInputs;
   news_score?: number;
+  broad_etf_priority?: boolean;
 };
 
 export type AssetScoreResult = {
@@ -59,6 +61,8 @@ export type AssetScoreResult = {
   momentum_score: number;
   trend_score: number;
   volatility_risk_score: number;
+  technical_score: number;
+  risk_adjusted_score: number;
   etf_final_score: number | null;
   stock_final_score: number | null;
 };

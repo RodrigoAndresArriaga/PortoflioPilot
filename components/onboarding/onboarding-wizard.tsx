@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { AllocationStep } from "@/components/onboarding/steps/allocation-step";
 import { CurrencyStep } from "@/components/onboarding/steps/currency-step";
 import { HoldingsStep } from "@/components/onboarding/steps/holdings-step";
 import { InvestorProfileStep } from "@/components/onboarding/steps/investor-profile-step";
+import { RecommendationPreviewStep } from "@/components/onboarding/steps/recommendation-preview-step";
 import { WatchlistStep } from "@/components/onboarding/steps/watchlist-step";
 import { WelcomeStep } from "@/components/onboarding/steps/welcome-step";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,12 +21,9 @@ import {
 } from "@/components/ui/card";
 import { completeOnboarding } from "@/lib/server/onboarding";
 import {
-  allocationStepSchema,
   currencyStepSchema,
   formatZodErrors,
-  getDefaultAllocationStepValue,
   getDefaultOnboardingFormData,
-  getRecommendedBucketsForRisk,
   holdingsStepSchema,
   investorProfileStepSchema,
   mergeHoldingsIntoWatchlist,
@@ -55,6 +52,9 @@ export function OnboardingWizard({
   const stepLabel = useMemo(() => {
     if (step === 0) {
       return "Welcome";
+    }
+    if (step === 5) {
+      return "First recommendation preview";
     }
     return `Step ${step} of ${TOTAL_STEPS - 1}`;
   }, [step]);
@@ -94,18 +94,7 @@ export function OnboardingWizard({
         setErrors(formatZodErrors(result.error));
         return false;
       }
-
-      const allocationDefaults = getDefaultAllocationStepValue(
-        result.data.risk_profile,
-      );
-      updateFormData({
-        ...result.data,
-        allocation_mode: allocationDefaults.allocation_mode,
-        target_buckets: allocationDefaults.target_buckets,
-        target_assets: allocationDefaults.target_assets,
-        include_individual_stock_bucket:
-          allocationDefaults.include_individual_stock_bucket,
-      });
+      updateFormData(result.data);
       return true;
     }
 
@@ -121,43 +110,17 @@ export function OnboardingWizard({
         setErrors(formatZodErrors(result.error));
         return false;
       }
-
       updateFormData({
         holdings: result.data.holdings,
-        target_buckets:
-          formData.target_buckets.length > 0
-            ? formData.target_buckets
-            : getRecommendedBucketsForRisk(
-                formData.risk_profile,
-                formData.include_individual_stock_bucket,
-              ),
-      });
-      return true;
-    }
-
-    if (step === 4) {
-      const result = allocationStepSchema.safeParse({
-        allocation_mode: formData.allocation_mode,
-        target_buckets: formData.target_buckets,
-        target_assets: formData.target_assets,
-        include_individual_stock_bucket:
-          formData.include_individual_stock_bucket,
-      });
-      if (!result.success) {
-        setErrors(formatZodErrors(result.error));
-        return false;
-      }
-      updateFormData({
-        ...result.data,
         watchlist: mergeHoldingsIntoWatchlist(
           formData.watchlist,
-          formData.holdings,
+          result.data.holdings,
         ),
       });
       return true;
     }
 
-    if (step === 5) {
+    if (step === 4) {
       const result = watchlistStepSchema.safeParse({
         watchlist: formData.watchlist,
       });
@@ -166,6 +129,10 @@ export function OnboardingWizard({
         return false;
       }
       updateFormData(result.data);
+      return true;
+    }
+
+    if (step === 5) {
       return true;
     }
 
@@ -259,22 +226,6 @@ export function OnboardingWizard({
         )}
 
         {step === 4 && (
-          <AllocationStep
-            value={{
-              allocation_mode: formData.allocation_mode,
-              target_buckets: formData.target_buckets,
-              target_assets: formData.target_assets,
-              include_individual_stock_bucket:
-                formData.include_individual_stock_bucket,
-            }}
-            riskProfile={formData.risk_profile}
-            holdings={formData.holdings}
-            onChange={(allocation) => updateFormData(allocation)}
-            errors={errors}
-          />
-        )}
-
-        {step === 5 && (
           <WatchlistStep
             value={formData.watchlist}
             holdings={formData.holdings}
@@ -282,6 +233,8 @@ export function OnboardingWizard({
             errors={errors}
           />
         )}
+
+        {step === 5 && <RecommendationPreviewStep formData={formData} />}
 
         {submitError && (
           <Alert variant="destructive">

@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 
-import { inferTargetAssetsFromHoldings } from "@/lib/allocation/infer-bucket-assignments";
 import { isQuotedMarketAsset } from "@/lib/market-data/asset-utils";
 import { refreshHoldingsValuations } from "@/lib/server/market-data/refresh-holdings";
 import { createClient } from "@/lib/supabase/server";
@@ -97,7 +96,6 @@ export async function completeOnboarding(
       user_id: user.id,
       name: "My Portfolio",
       base_currency: payload.base_currency,
-      allocation_mode: payload.allocation_mode,
     })
     .select("id")
     .single();
@@ -142,80 +140,6 @@ export async function completeOnboarding(
       await refreshHoldingsValuations(supabase, insertedHoldings, true);
     } catch {
       // onboarding continues with zero values until manual refresh
-    }
-  }
-
-  const enabledBuckets = payload.target_buckets.filter((bucket) => {
-    if (bucket.bucket_key === "individual_stock") {
-      return payload.include_individual_stock_bucket && bucket.enabled;
-    }
-    return bucket.enabled;
-  });
-
-  const bucketRows =
-    payload.allocation_mode === "symbol"
-      ? []
-      : enabledBuckets.map((bucket) => ({
-          user_id: user.id,
-          portfolio_id: portfolio.id,
-          bucket_key: bucket.bucket_key,
-          target_percent: bucket.target_percent,
-          enabled: bucket.enabled,
-        }));
-
-  if (bucketRows.length > 0) {
-    const { error: bucketsError } = await supabase
-      .from("target_buckets")
-      .insert(bucketRows);
-
-    if (bucketsError) {
-      return { ok: false, error: bucketsError.message };
-    }
-  }
-
-  if (payload.allocation_mode === "symbol" && payload.target_assets.length > 0) {
-    const assetRows = payload.target_assets.map((asset) => ({
-      user_id: user.id,
-      portfolio_id: portfolio.id,
-      symbol: normalizeSymbol(asset.symbol),
-      bucket_key: asset.bucket_key,
-      target_percent: asset.target_percent,
-      enabled: true,
-    }));
-
-    const { error: assetsError } = await supabase
-      .from("target_assets")
-      .insert(assetRows);
-
-    if (assetsError) {
-      return { ok: false, error: assetsError.message };
-    }
-  } else if (payload.allocation_mode !== "symbol") {
-    const inferredAssets = inferTargetAssetsFromHoldings(
-      payload.holdings.map((holding) => ({
-        symbol: holding.symbol,
-        asset_type: holding.asset_type,
-      })),
-      enabledBuckets.map((bucket) => bucket.bucket_key),
-    );
-
-    if (inferredAssets.length > 0) {
-      const assetRows = inferredAssets.map((asset) => ({
-        user_id: user.id,
-        portfolio_id: portfolio.id,
-        symbol: normalizeSymbol(asset.symbol),
-        bucket_key: asset.bucket_key,
-        target_percent: null,
-        enabled: true,
-      }));
-
-      const { error: assetsError } = await supabase
-        .from("target_assets")
-        .insert(assetRows);
-
-      if (assetsError) {
-        return { ok: false, error: assetsError.message };
-      }
     }
   }
 

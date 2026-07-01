@@ -19,7 +19,7 @@ export function WelcomeStep({ onContinue }: WelcomeStepProps) {
       <CardHeader>
         <CardTitle>Welcome to PortfolioPilot</CardTitle>
         <CardDescription>
-          Set up your profile, portfolio, target allocation, and watchlist in
+          Set up your profile, portfolio, watchlist, and strategy preferences in
           a few steps. This takes about five minutes.
         </CardDescription>
       </CardHeader>
@@ -27,8 +27,8 @@ export function WelcomeStep({ onContinue }: WelcomeStepProps) {
         <ul className="list-inside list-disc space-y-2 text-sm text-muted-foreground">
           <li>Currency and monthly investment amount</li>
           <li>Risk profile and time horizon</li>
-          <li>Current holdings and target allocation</li>
-          <li>Watchlist for monitoring</li>
+          <li>Current holdings and investment interests</li>
+          <li>Watchlist and first recommendation preview</li>
         </ul>
         <Button type="button" onClick={onContinue} className="w-full">
           Get started

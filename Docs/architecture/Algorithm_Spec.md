@@ -1,16 +1,38 @@
 # Algorithm Spec
 
-Canonical formulas and rules for PortfolioPilot's allocation and scoring engine. Implementation begins in B3 (core allocation) and B5 (technical/risk scores).
+Canonical formulas and rules for PortfolioPilot's recommendation and scoring engine.
 
-**Price inputs:** E1 and all weight calculations assume **auto-updated** `holdings.current_value` from live quotes (B4.5 — see [Market_Data.md](./Market_Data.md)). Manual `current_value` entry is interim only.
+**P1 change:** Target allocation gap scoring and drift-band buy blocking are removed. The **decision engine** is primary: it ranks holdings + watchlist by composite recommendation score, applies risk/news guardrails, and allocates the monthly budget. No automatic selling.
+
+**Price inputs:** Weight and concentration calculations assume **auto-updated** `holdings.current_value` from live quotes (B4.5 — see [Market_Data.md](./Market_Data.md)).
 
 ---
 
-## Core Algorithms (v1)
+## Primary recommendation score (P1)
 
-1. Target allocation algorithm
-2. Contribution-based rebalancing
-3. Drift-band rebalancing
+**ETF score** = 30% technical + 20% risk-adjusted + 20% news + 15% diversification + 15% user fit (+ broad ETF boost when enabled)
+
+**Stock score** = 25% technical + 20% quality + 20% news + 15% risk-adjusted + 10% diversification + 10% user fit
+
+Missing inputs default to neutral **50**. Implementation: `lib/engine/final-score.ts`, `lib/engine/recommendation-engine.ts`, `lib/engine/final-position-sizing.ts`.
+
+**Blocking (kept):** single-stock concentration, `ai_bias = avoid`, manual review, extreme volatility reduction.
+
+**Removed:** block buys solely because asset is above target weight.
+
+---
+
+## Legacy algorithms (pre-P1, deprecated)
+
+The sections below describe the retired target-allocation model kept for historical reference.
+
+---
+
+## Core Algorithms (v1, deprecated target-allocation path)
+
+1. ~~Target allocation algorithm~~ (removed P1)
+2. ~~Contribution-based rebalancing via allocation gap~~ (removed P1)
+3. ~~Drift-band rebalancing~~ (removed P1)
 4. Dollar-cost averaging schedule
 5. ETF overlap / diversification check
 6. Momentum / relative strength score

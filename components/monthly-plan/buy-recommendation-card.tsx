@@ -2,9 +2,9 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   formatPlanCurrency,
-  formatWeightPercent,
 } from "@/lib/monthly-plan/format";
 import { cn } from "@/lib/utils";
 import type { MonthlyPlanItemInput } from "@/lib/validation/monthly-plan";
@@ -34,11 +34,31 @@ export function BuyRecommendationCard({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="font-semibold text-foreground">{symbol}</p>
-          <p className="text-sm text-muted-foreground">
-            Current {formatWeightPercent(item.current_weight)} · Target{" "}
-            {formatWeightPercent(item.target_weight)}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-foreground">{symbol}</p>
+            {item.recommendation_score != null ? (
+              <Badge variant="secondary">
+                Score {item.recommendation_score.toFixed(1)}
+              </Badge>
+            ) : null}
+            {item.concentration_flag ? (
+              <Badge variant="destructive">Concentration</Badge>
+            ) : null}
+            {item.manual_review_required ? (
+              <Badge variant="outline">Manual review</Badge>
+            ) : null}
+          </div>
+          {item.technical_score != null ? (
+            <p className="text-sm text-muted-foreground">
+              Technical {item.technical_score.toFixed(1)}
+              {item.news_modifier_score != null
+                ? ` · News ${item.news_modifier_score.toFixed(1)}`
+                : ""}
+              {item.risk_score != null
+                ? ` · Risk ${item.risk_score.toFixed(1)}`
+                : ""}
+            </p>
+          ) : null}
         </div>
         {readOnly ? (
           <p className="text-lg font-semibold tabular-nums">
@@ -62,6 +82,9 @@ export function BuyRecommendationCard({
           </div>
         )}
       </div>
+      {item.decision_basis ? (
+        <p className="text-xs text-muted-foreground">{item.decision_basis}</p>
+      ) : null}
       <p className="text-sm text-muted-foreground">{item.reason}</p>
     </div>
   );

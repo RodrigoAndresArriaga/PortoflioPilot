@@ -6,15 +6,17 @@ import { parseZodError, requireAuthUser } from "@/lib/server/auth";
 import {
   dispatchMonthlyPlanReady,
 } from "@/lib/server/email-dispatch";
-import { getHoldingsWithFreshPrices } from "@/lib/server/market-data/with-fresh-holdings";
+import { getHoldingsWithFreshPrices, getMarketContext } from "@/lib/server/market-data/with-fresh-holdings";
 import {
   buildMonthlyPlanPayload,
   getCurrentMonthKey,
+  newsInputsToSignals,
 } from "@/lib/server/monthly-plan-generation";
+import { getLatestNewsReport } from "@/lib/server/news-inputs";
 import { normalizePlanSymbol } from "@/lib/monthly-plan/format";
 import { getUserPortfolio } from "@/lib/server/portfolio";
 import { getUserProfile } from "@/lib/server/profile";
-import { getTargetAllocations } from "@/lib/server/targets";
+import { getWatchlist } from "@/lib/server/watchlist";
 import {
   getMonthlyPlanSchema,
   markMonthlyPlanCompletedSchema,
@@ -118,8 +120,13 @@ async function persistMonthlyPlan(
   const itemRows = payload.items.map((item) => ({
     monthly_plan_id: planId,
     symbol: normalizePlanSymbol(item.symbol),
-    target_weight: item.target_weight,
-    current_weight: item.current_weight,
+    recommendation_score: item.recommendation_score ?? null,
+    technical_score: item.technical_score ?? null,
+    news_modifier_score: item.news_modifier_score ?? null,
+    risk_score: item.risk_score ?? null,
+    concentration_flag: item.concentration_flag ?? false,
+    manual_review_required: item.manual_review_required ?? false,
+    decision_basis: item.decision_basis?.trim() ?? null,
     recommended_amount: item.recommended_amount,
     adjusted_amount: item.adjusted_amount,
     reason: item.reason.trim(),
@@ -208,12 +215,15 @@ export async function generateMonthlyPlan(
     return { ok: false, error: parseZodError(error) };
   }
 
-  const [portfolio, profile, holdings, targets] = await Promise.all([
-    getUserPortfolio(auth.user.id),
-    getUserProfile(),
-    getHoldingsWithFreshPrices(),
-    getTargetAllocations(),
-  ]);
+  const [portfolio, profile, holdings, watchlist, marketSnapshot, weeklyNews] =
+    await Promise.all([
+      getUserPortfolio(auth.user.id),
+      getUserProfile(),
+      getHoldingsWithFreshPrices(),
+      getWatchlist(),
+      getMarketContext({ refreshIfStale: true }),
+      getLatestNewsReport("weekly_market_review"),
+    ]);
 
   if (!portfolio) {
     return { ok: false, error: "Portfolio not found." };
@@ -224,18 +234,25 @@ export async function generateMonthlyPlan(
   }
 
   if (!holdings || holdings.length === 0) {
-    return { ok: false, error: "Add at least one holding before generating a plan." };
+    if (!watchlist || watchlist.length === 0) {
+      return {
+        ok: false,
+        error: "Add at least one holding or watchlist symbol before generating a plan.",
+      };
+    }
   }
 
-  if (!targets) {
-    return { ok: false, error: "Target allocations not found." };
-  }
+  const newsSignals = weeklyNews
+    ? newsInputsToSignals(weeklyNews.children)
+    : [];
 
   const payloadResult = buildMonthlyPlanPayload({
     profile,
-    holdings,
-    targets,
+    holdings: holdings ?? [],
+    watchlist: watchlist ?? [],
     month: planMonth,
+    technicalScores: marketSnapshot?.technicalScores ?? [],
+    newsSignals,
   });
 
   if (!payloadResult.ok) {

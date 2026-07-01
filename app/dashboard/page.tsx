@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { AllocationDonutChart } from "@/components/dashboard/allocation-donut-chart";
-import { AllocationDriftSection } from "@/components/dashboard/allocation-drift-section";
 import { DashboardStatsRow } from "@/components/dashboard/dashboard-stats-row";
 import { DashboardStatusBadges } from "@/components/dashboard/dashboard-status-badges";
+import { EngineRationalePanel } from "@/components/dashboard/engine-rationale-panel";
 import { MonthlyPlanPreview } from "@/components/dashboard/monthly-plan-preview";
+import { RecommendationScoreCards } from "@/components/dashboard/recommendation-score-cards";
 import { RiskWarnings } from "@/components/dashboard/risk-warnings";
 import { WatchlistTable } from "@/components/dashboard/watchlist-table";
 import { AppShell } from "@/components/layout/app-shell";
@@ -23,8 +24,7 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const allocationLabel =
-    data.allocation.mode === "symbol" ? "symbol" : "bucket";
+  const topRecommendation = data.topRecommendations[0] ?? null;
 
   return (
     <AppShell profile={data.profile} email={user?.email} pageTitle="Dashboard">
@@ -34,8 +34,8 @@ export default async function DashboardPage() {
             Dashboard
           </h2>
           <p className="text-muted-foreground">
-            Portfolio overview using your saved holdings, targets, and monthly
-            plan.
+            Portfolio overview powered by the recommendation engine, your
+            holdings, and latest monthly plan.
           </p>
         </div>
 
@@ -56,20 +56,15 @@ export default async function DashboardPage() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           <AllocationDonutChart
-            title="Current allocation"
-            description={`Actual ${allocationLabel} weights from your holdings.`}
-            slices={data.allocation.currentSlices}
-            emptyMessage="Add holdings to see your current allocation."
+            title="Current exposure"
+            description="Actual weights from your holdings."
+            slices={data.exposure.currentSlices}
+            emptyMessage="Add holdings to see your current exposure."
           />
-          <AllocationDonutChart
-            title="Target allocation"
-            description={`Target ${allocationLabel} weights from your settings.`}
-            slices={data.allocation.targetSlices}
-            emptyMessage="Set target allocations in settings to see targets."
-          />
+          <EngineRationalePanel topRecommendation={topRecommendation} />
         </div>
 
-        <AllocationDriftSection driftRows={data.allocation.driftRows} />
+        <RecommendationScoreCards recommendations={data.topRecommendations} />
 
         <MonthlyPlanPreview monthlyPlan={data.monthlyPlan} />
 

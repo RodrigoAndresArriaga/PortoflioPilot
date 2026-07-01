@@ -1,7 +1,6 @@
-import type { AllocationStatus } from "@/lib/engine/types";
 import type { PortfolioWarning } from "@/lib/engine/concentration";
+import type { RecommendationCandidate } from "@/lib/engine/types";
 import type {
-  AllocationMode,
   MonthlyPlanWithItems,
   Profile,
   WatchlistItem,
@@ -13,27 +12,16 @@ export type AllocationSlice = {
   percent: number;
 };
 
-export type DriftRow = {
-  key: string;
-  label: string;
-  currentPercent: number;
-  targetPercent: number;
-  driftPercent: number;
-  status: AllocationStatus;
-};
-
-export type DashboardAllocationView = {
-  mode: AllocationMode;
+export type DashboardExposureView = {
   currentSlices: AllocationSlice[];
-  targetSlices: AllocationSlice[];
-  driftRows: DriftRow[];
 };
 
 export type DashboardData = {
   profile: Profile;
   totalPortfolioValue: number;
   nextInvestmentDate: string;
-  allocation: DashboardAllocationView;
+  exposure: DashboardExposureView;
+  topRecommendations: RecommendationCandidate[];
   monthlyPlan: MonthlyPlanWithItems | null;
   watchlist: WatchlistItem[];
   warnings: PortfolioWarning[];

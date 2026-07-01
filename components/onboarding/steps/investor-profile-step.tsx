@@ -34,7 +34,7 @@ export function InvestorProfileStep({
         <h3 className="text-lg font-semibold">Investment preference</h3>
         <p className="text-sm text-muted-foreground">
           Tell us your risk tolerance and time horizon. PortfolioPilot uses this
-          for recommended allocation defaults.
+          to tailor recommendation scores and risk guardrails.
         </p>
       </div>
 

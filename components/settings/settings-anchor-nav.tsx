@@ -9,7 +9,7 @@ const SETTINGS_SECTIONS = [
   { id: "investment-day", label: "Investment day" },
   { id: "risk-profile", label: "Risk profile" },
   { id: "time-horizon", label: "Time horizon" },
-  { id: "target-allocation", label: "Target allocation" },
+  { id: "strategy", label: "Investment strategy" },
   { id: "watchlist", label: "Watchlist" },
   { id: "email", label: "Email" },
 ] as const;

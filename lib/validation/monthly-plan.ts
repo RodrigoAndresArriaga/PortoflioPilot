@@ -19,14 +19,13 @@ export const monthlyPlanItemInputSchema = z.object({
     .trim()
     .min(1, "Symbol is required")
     .max(20, "Symbol is too long"),
-  target_weight: z.coerce
-    .number()
-    .min(0, "Target weight must be between 0 and 1")
-    .max(1, "Target weight must be between 0 and 1"),
-  current_weight: z.coerce
-    .number()
-    .min(0, "Current weight must be between 0 and 1")
-    .max(1, "Current weight must be between 0 and 1"),
+  recommendation_score: z.coerce.number().min(0).max(100).nullable().optional(),
+  technical_score: z.coerce.number().min(0).max(100).nullable().optional(),
+  news_modifier_score: z.coerce.number().min(0).max(100).nullable().optional(),
+  risk_score: z.coerce.number().min(0).max(100).nullable().optional(),
+  concentration_flag: z.boolean().optional().default(false),
+  manual_review_required: z.boolean().optional().default(false),
+  decision_basis: z.string().trim().max(500).nullable().optional(),
   recommended_amount: z.coerce
     .number()
     .min(0, "Recommended amount must be zero or greater"),

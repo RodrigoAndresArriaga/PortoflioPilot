@@ -6,22 +6,15 @@ import type { AssetType } from "@/types/database";
 
 const NEUTRAL_FACTOR = 50;
 
-export function allocationGapToScore(allocationGap: number): number {
-  if (allocationGap <= 0) {
-    return 40;
-  }
-  if (allocationGap >= 5000) {
-    return 100;
-  }
-  return Math.round(40 + (allocationGap / 5000) * 60);
-}
-
 type BuildAssetScoreArgs = {
   symbol: string;
   assetType: AssetType;
   bars: PriceBar[];
   benchmarkBars?: PriceBar[];
-  targetAllocationGapScore?: number;
+  diversificationScore?: number;
+  userFitScore?: number;
+  newsScore?: number;
+  broadEtfPriority?: boolean;
 };
 
 // build AssetScoreInput from live price history
@@ -36,11 +29,13 @@ export function buildAssetScoreInput(args: BuildAssetScoreArgs): AssetScoreInput
   return {
     symbol: args.symbol,
     asset_kind: assetKind,
-    target_allocation_gap_score:
-      args.targetAllocationGapScore ?? NEUTRAL_FACTOR,
     momentum: technical.momentum,
     trend: technical.trend,
     volatility: technical.volatility,
+    diversification_score: args.diversificationScore ?? NEUTRAL_FACTOR,
+    user_fit_score: args.userFitScore ?? NEUTRAL_FACTOR,
+    news_score: args.newsScore,
+    broad_etf_priority: args.broadEtfPriority,
     stock_factors:
       assetKind === "stock"
         ? {

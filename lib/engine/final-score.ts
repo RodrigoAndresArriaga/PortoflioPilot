@@ -16,62 +16,72 @@ import {
 
 type EtfFinalScoreArgs = {
   symbol: string;
-  target_allocation_gap_score: number;
-  trend_score: number;
-  momentum_score: number;
-  volatility_risk_score: number;
+  technical_score: number;
+  risk_adjusted_score: number;
   news_score?: number;
+  diversification_score: number;
+  user_fit_score: number;
+  broad_etf_priority?: boolean;
 };
 
 type StockFinalScoreArgs = {
-  target_allocation_gap_score: number;
+  technical_score: number;
   quality_score: number;
-  momentum_score: number;
-  value_score: number;
-  volatility_risk_score: number;
-  growth_score: number;
   news_score?: number;
+  risk_adjusted_score: number;
+  diversification_score: number;
+  user_fit_score: number;
 };
 
-// composite ETF score with broad-ETF priority boost
+// composite technical score from momentum and trend
+export function computeTechnicalCompositeScore(
+  momentumScore: number,
+  trendScore: number,
+): number {
+  return clampScore(0.55 * momentumScore + 0.45 * trendScore);
+}
+
+// composite ETF recommendation score
 export function computeEtfFinalScore(args: EtfFinalScoreArgs): number {
-  const gap = clampScore(args.target_allocation_gap_score);
-  const trend = clampScore(args.trend_score);
-  const momentum = clampScore(args.momentum_score);
-  const safety = volatilitySafetyScore(args.volatility_risk_score);
+  const technical = clampScore(args.technical_score);
+  const riskAdjusted = clampScore(args.risk_adjusted_score);
   const news = clampScore(args.news_score ?? DEFAULT_NEUTRAL_NEWS_SCORE);
+  const diversification = clampScore(args.diversification_score);
+  const userFit = clampScore(args.user_fit_score);
 
   let score =
-    0.35 * gap +
-    0.25 * trend +
-    0.2 * momentum +
-    0.15 * safety +
-    0.05 * news;
+    0.3 * technical +
+    0.2 * riskAdjusted +
+    0.2 * news +
+    0.15 * diversification +
+    0.15 * userFit;
 
-  if (isBroadEtfSymbol(args.symbol)) {
+  if (
+    args.broad_etf_priority !== false &&
+    isBroadEtfSymbol(args.symbol)
+  ) {
     score += BROAD_ETF_FINAL_SCORE_BOOST;
   }
 
   return clampScore(roundMoney(score, 2));
 }
 
-// composite stock score
+// composite stock recommendation score
 export function computeStockFinalScore(args: StockFinalScoreArgs): number {
-  const gap = clampScore(args.target_allocation_gap_score);
+  const technical = clampScore(args.technical_score);
   const quality = clampScore(args.quality_score);
-  const momentum = clampScore(args.momentum_score);
-  const value = clampScore(args.value_score);
-  const safety = volatilitySafetyScore(args.volatility_risk_score);
-  const growth = clampScore(args.growth_score);
   const news = clampScore(args.news_score ?? DEFAULT_NEUTRAL_NEWS_SCORE);
+  const riskAdjusted = clampScore(args.risk_adjusted_score);
+  const diversification = clampScore(args.diversification_score);
+  const userFit = clampScore(args.user_fit_score);
 
   const score =
-    0.25 * gap +
+    0.25 * technical +
     0.2 * quality +
-    0.2 * momentum +
-    0.15 * value +
-    0.1 * safety +
-    0.1 * news;
+    0.2 * news +
+    0.15 * riskAdjusted +
+    0.1 * diversification +
+    0.1 * userFit;
 
   return clampScore(roundMoney(score, 2));
 }
@@ -81,6 +91,11 @@ export function computeAssetScores(input: AssetScoreInput): AssetScoreResult {
   const momentumScore = computeMomentumScore(input.momentum);
   const trendScore = computeTrendScore(input.trend);
   const volatilityRiskScore = computeVolatilityRiskScore(input.volatility);
+  const technicalScore = computeTechnicalCompositeScore(
+    momentumScore,
+    trendScore,
+  );
+  const riskAdjustedScore = volatilitySafetyScore(volatilityRiskScore);
 
   if (input.asset_kind === "etf") {
     return {
@@ -89,13 +104,16 @@ export function computeAssetScores(input: AssetScoreInput): AssetScoreResult {
       momentum_score: momentumScore,
       trend_score: trendScore,
       volatility_risk_score: volatilityRiskScore,
+      technical_score: technicalScore,
+      risk_adjusted_score: riskAdjustedScore,
       etf_final_score: computeEtfFinalScore({
         symbol: input.symbol,
-        target_allocation_gap_score: input.target_allocation_gap_score,
-        trend_score: trendScore,
-        momentum_score: momentumScore,
-        volatility_risk_score: volatilityRiskScore,
+        technical_score: technicalScore,
+        risk_adjusted_score: riskAdjustedScore,
         news_score: input.news_score,
+        diversification_score: input.diversification_score,
+        user_fit_score: input.user_fit_score,
+        broad_etf_priority: input.broad_etf_priority,
       }),
       stock_final_score: null,
     };
@@ -111,15 +129,16 @@ export function computeAssetScores(input: AssetScoreInput): AssetScoreResult {
     momentum_score: momentumScore,
     trend_score: trendScore,
     volatility_risk_score: volatilityRiskScore,
+    technical_score: technicalScore,
+    risk_adjusted_score: riskAdjustedScore,
     etf_final_score: null,
     stock_final_score: computeStockFinalScore({
-      target_allocation_gap_score: input.target_allocation_gap_score,
+      technical_score: technicalScore,
       quality_score: input.stock_factors.quality,
-      momentum_score: momentumScore,
-      value_score: input.stock_factors.value,
-      volatility_risk_score: volatilityRiskScore,
-      growth_score: input.stock_factors.growth,
       news_score: input.news_score,
+      risk_adjusted_score: riskAdjustedScore,
+      diversification_score: input.diversification_score,
+      user_fit_score: input.user_fit_score,
     }),
   };
 }

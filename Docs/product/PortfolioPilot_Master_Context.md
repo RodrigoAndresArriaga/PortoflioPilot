@@ -2,7 +2,7 @@
 
 ## Product Definition
 
-PortfolioPilot is a **multi-user, manual-only long-term investment dashboard** built with Next.js, Supabase, shadcn/ui, and Tailwind CSS. It uses monthly contribution planning, current holdings, target allocation, technical/risk algorithms, and manually entered ChatGPT daily-urgent, weekly, and monthly news-risk reports to generate exact monthly buy amounts with clear visual dashboards and email alerts.
+PortfolioPilot is a **multi-user, manual-only long-term investment dashboard** built with Next.js, Supabase, shadcn/ui, and Tailwind CSS. It uses monthly contribution planning, current holdings, a watchlist, a **recommendation/decision engine**, technical/risk algorithms, and manually entered ChatGPT news reports to generate exact monthly buy amounts with clear visual dashboards and email alerts.
 
 The app does **not** trade automatically. The final output is a clear monthly buy plan the user executes manually in their brokerage account.
 
@@ -26,8 +26,8 @@ The system combines:
 
 - Long-term investing
 - Monthly contribution planning
-- Portfolio allocation control
-- Risk-aware rebalancing
+- Recommendation-engine-driven buy ranking
+- Risk guardrails and concentration checks
 - News-response layer for major events
 - Manual execution
 
@@ -54,7 +54,7 @@ It is **not** scalping, day trading, automatic trading, AI headline trading, hig
 
 - Auth via Supabase (email + password; Google login optional later).
 - v1: one user = one private account = one portfolio.
-- Each user owns their own profile, currency, monthly amount, risk profile, time horizon, portfolio, holdings, target allocation, watchlist, monthly plans, and news-risk inputs.
+- Each user owns their own profile, currency, monthly amount, risk profile, time horizon, strategy preferences, portfolio, holdings, watchlist, monthly plans, and news-risk inputs.
 - Friends and family can use the app; data must remain private and separate.
 
 ## Onboarding Flow (Future — Not K1)
@@ -62,10 +62,9 @@ It is **not** scalping, day trading, automatic trading, AI headline trading, hig
 1. **Account** — sign up or log in.
 2. **Currency and monthly amount** — preferred currency, monthly investment amount, investment day (default: 1st).
 3. **Investor profile** — risk profile (conservative / balanced / growth / aggressive growth), time horizon.
-4. **Current holdings** — ticker, asset type, currency, **shares**, cost basis, optional broker. **Market value is auto-fetched** from Yahoo Finance (B4.5); user does not maintain `current_value` manually.
-5. **Target allocation** — recommended or custom bucket weights (core ETF, growth, individual stocks, cash).
-6. **Watchlist** — curated ETF and stock symbols for monitoring.
-7. **First monthly plan preview** — generated buy plan for user confirmation.
+4. **Current holdings** — ticker, asset type, currency, **shares**, cost basis, optional broker.
+5. **Watchlist / investment interests** — curated ETF and stock symbols.
+6. **First recommendation preview** — read-only ranked buys from the decision engine (no target allocation step).
 
 ## Monthly Investment Timing
 
