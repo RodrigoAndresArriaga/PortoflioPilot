@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookOpenIcon,
   BriefcaseIcon,
   CalendarIcon,
   EyeIcon,
@@ -31,6 +32,11 @@ const navItems = [
     href: "/monthly-plan",
     label: "Monthly plan",
     icon: CalendarIcon,
+  },
+  {
+    href: "/instructions",
+    label: "Instructions",
+    icon: BookOpenIcon,
   },
   {
     href: "/settings/allocations",
