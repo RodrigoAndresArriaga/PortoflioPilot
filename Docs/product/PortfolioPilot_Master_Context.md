@@ -57,14 +57,40 @@ It is **not** scalping, day trading, automatic trading, AI headline trading, hig
 - Each user owns their own profile, currency, monthly amount, risk profile, time horizon, strategy preferences, portfolio, holdings, watchlist, monthly plans, and news-risk inputs.
 - Friends and family can use the app; data must remain private and separate.
 
-## Onboarding Flow (Future — Not K1)
+## Onboarding Flow
 
 1. **Account** — sign up or log in.
-2. **Currency and monthly amount** — preferred currency, monthly investment amount, investment day (default: 1st).
+2. **Currency and monthly amount** — preferred currency, monthly investment amount, optional initial lump sum, investment day (default: 1st).
 3. **Investor profile** — risk profile (conservative / balanced / growth / aggressive growth), time horizon.
-4. **Current holdings** — ticker, asset type, currency, **shares**, cost basis, optional broker.
-5. **Watchlist / investment interests** — curated ETF and stock symbols.
-6. **First recommendation preview** — read-only ranked buys from the decision engine (no target allocation step).
+4. **Investment status** — “I already have investments” or “I am not invested yet”.
+5. **Current holdings** — required if already invested; optional/skippable if not invested yet.
+6. **Watchlist / investment interests** — curated ETF and stock symbols (min 1).
+7. **First recommendation preview** — read-only preview or initial-setup guidance for not-invested users.
+
+**Resume mode:** `/onboarding?mode=resume` lets completed users update profile, investment status, watchlist, and add new holdings without duplicating portfolio rows.
+
+## Initial Investment Flow (P2 — Not Invested Yet)
+
+1. User completes onboarding with no holdings.
+2. Dashboard shows initial setup card + setup attention banner.
+3. User copies **Initial Investment Research Prompt** from `/instructions`.
+4. User runs prompt manually in ChatGPT.
+5. User pastes JSON on `/initial-recommendation`.
+6. App validates JSON, saves report + items, runs initial investment engine.
+7. User reviews manual buy amounts and invests in brokerage manually.
+8. User adds actual holdings via `/holdings` or resume onboarding.
+
+Manual-only boundary preserved: ChatGPT provides research input; the app engine generates final suggested amounts.
+
+## P3 — Transition to Regular Monthly Plan
+
+After initial recommendation and adding holdings:
+
+1. Lifecycle state becomes `ready_for_first_monthly`.
+2. Transition banner and dashboard card guide user to `/monthly-plan`.
+3. User manually taps **Generate plan** — no automatic creation.
+4. Missing weekly news does not block generation; engine uses neutral defaults.
+5. Once a monthly plan exists, lifecycle becomes `monthly_active`.
 
 ## Monthly Investment Timing
 

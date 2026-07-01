@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildDailyUrgentPrompt } from "@/lib/prompts/daily-urgent";
 import { formatWatchlistLine } from "@/lib/prompts/format-watchlist";
 import { buildMonthlyReviewPrompt } from "@/lib/prompts/monthly-review";
+import { buildInitialInvestmentResearchPrompt } from "@/lib/prompts/initial-investment-research";
 import { buildWeeklyReviewPrompt } from "@/lib/prompts/weekly-review";
 
 const sampleSymbols = ["VOO", "NVDA", "MSFT"];
@@ -24,6 +25,37 @@ describe("buildDailyUrgentPrompt", () => {
     expect(prompt).toContain("Watchlist:\nVOO, NVDA, MSFT");
     expect(prompt).toContain('"report_type": "daily_urgent_scan"');
     expect(prompt).toContain("Do not output automatic trading instructions.");
+  });
+});
+
+describe("buildInitialInvestmentResearchPrompt", () => {
+  it("returns empty string when watchlist is empty", () => {
+    expect(
+      buildInitialInvestmentResearchPrompt({
+        currency: "MXN",
+        monthlyAmount: 4000,
+        initialInvestmentAmount: 4000,
+        riskProfile: "growth",
+        timeHorizon: "10_plus_years",
+        watchlist: [],
+      }),
+    ).toBe("");
+  });
+
+  it("includes watchlist and investment amounts", () => {
+    const prompt = buildInitialInvestmentResearchPrompt({
+      currency: "MXN",
+      monthlyAmount: 4000,
+      initialInvestmentAmount: 8000,
+      riskProfile: "growth",
+      timeHorizon: "10_plus_years",
+      watchlist: sampleSymbols,
+    });
+
+    expect(prompt).toContain("Initial investment amount: 8000");
+    expect(prompt).toContain("Monthly recurring investment amount: 4000");
+    expect(prompt).toContain("VOO, NVDA, MSFT");
+    expect(prompt).toContain('"report_type": "initial_investment_research"');
   });
 });
 

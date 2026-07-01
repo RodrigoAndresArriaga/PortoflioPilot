@@ -305,3 +305,34 @@ Do not implement in v1:
 - Automatic broker trading
 - Max-Sharpe optimizer without constraints
 - Crypto-style signal bots
+
+---
+
+## P2 — Initial Investment Engine
+
+For users with `investment_status = not_invested_yet` and no holdings, a separate engine allocates a **one-time initial lump sum** (from `initial_investment_amount` or default `monthly_investment_amount`).
+
+**Input:** pasted `initial_investment_research` JSON (symbol scores, roles, ai_bias) + watchlist technical scores.
+
+**ETF initial score:**
+```
+30% user_fit + 25% technical + 20% risk_adjusted + 15% news + 10% diversification
+```
+
+**Stock initial score:**
+```
+25% fundamental + 20% technical + 20% risk_adjusted + 15% news + 10% user_fit + 10% diversification
+```
+
+**Allocation rules:**
+- Core broad ETFs receive higher weight via role multiplier
+- Individual stocks capped at `max_individual_stock_percent` of initial amount
+- `ai_bias = avoid` → amount 0, manual review
+- `ai_bias = watch` → 50% reduction
+- `news_confidence < 60` → dampened news weight
+- `overall_risk_level = high` → increased cash reserve
+- Unallocated budget after caps flows to CASH line
+
+**Output:** persisted as `monthly_plans` with `plan_kind = initial`, `status = initial_recommendation`.
+
+This is **not** target allocation — it is an engine-generated initial manual recommendation distribution.

@@ -13,6 +13,8 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/holdings") ||
       pathname.startsWith("/monthly-plan") ||
       pathname.startsWith("/instructions") ||
+      pathname.startsWith("/news-input") ||
+      pathname.startsWith("/initial-recommendation") ||
       pathname.startsWith("/settings"))
   ) {
     const url = request.nextUrl.clone();

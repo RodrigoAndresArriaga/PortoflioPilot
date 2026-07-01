@@ -11,7 +11,11 @@ export const monthlyPlanStatusSchema = z.enum([
   "draft",
   "confirmed",
   "completed",
+  "initial_recommendation",
+  "manual_review",
 ]);
+
+export const monthlyPlanKindSchema = z.enum(["monthly", "initial"]);
 
 export const monthlyPlanItemInputSchema = z.object({
   symbol: z
@@ -43,6 +47,7 @@ export const saveMonthlyPlanSchema = z
       .min(0, "Monthly amount must be zero or greater"),
     currency: baseCurrencySchema,
     status: monthlyPlanStatusSchema.default("draft"),
+    plan_kind: monthlyPlanKindSchema.default("monthly"),
     items: z
       .array(monthlyPlanItemInputSchema)
       .min(1, "Add at least one plan item"),

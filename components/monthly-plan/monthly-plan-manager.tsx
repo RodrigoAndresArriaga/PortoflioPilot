@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BuyRecommendationCard } from "@/components/monthly-plan/buy-recommendation-card";
 import { CashReserveCard } from "@/components/monthly-plan/cash-reserve-card";
 import { ManualTradeChecklist } from "@/components/monthly-plan/manual-trade-checklist";
+import { MonthlyPlanReadinessAlert } from "@/components/monthly-plan/monthly-plan-readiness-alert";
 import { MonthlyPlanActions } from "@/components/monthly-plan/monthly-plan-actions";
 import { MonthlyPlanSummaryCard } from "@/components/monthly-plan/monthly-plan-summary";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -25,11 +26,14 @@ import {
   saveMonthlyPlanSchema,
   type MonthlyPlanItemInput,
 } from "@/lib/validation/monthly-plan";
+import type { MonthlyPlanReadiness } from "@/lib/portfolio-lifecycle";
 import type { MonthlyPlanWithItems } from "@/types/database";
 
 type MonthlyPlanManagerProps = {
   initialPlan: MonthlyPlanWithItems | null;
   month: string;
+  readiness?: MonthlyPlanReadiness | null;
+  showTransitionHint?: boolean;
 };
 
 function toEditableItems(plan: MonthlyPlanWithItems): MonthlyPlanItemInput[] {
@@ -69,6 +73,8 @@ function itemsMatch(
 export function MonthlyPlanManager({
   initialPlan,
   month,
+  readiness = null,
+  showTransitionHint = false,
 }: MonthlyPlanManagerProps) {
   const router = useRouter();
   const [plan, setPlan] = useState(initialPlan);
@@ -238,6 +244,18 @@ export function MonthlyPlanManager({
 
   return (
     <div className="space-y-8">
+      {readiness ? <MonthlyPlanReadinessAlert readiness={readiness} /> : null}
+
+      {showTransitionHint && !initialPlan ? (
+        <Alert>
+          <AlertDescription>
+            This is your first regular monthly plan after the initial
+            recommendation flow. Review amounts and tap Generate plan when you
+            are ready — nothing is created automatically.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {formError ? (
         <Alert variant="destructive">
           <AlertDescription>{formError}</AlertDescription>
@@ -251,6 +269,7 @@ export function MonthlyPlanManager({
         isSaving={isSaving}
         isCompleting={isCompleting}
         canMarkComplete={Boolean(plan) && allTradesChecked && !isDirty}
+        canGenerate={readiness?.canGenerate ?? true}
         onGenerate={handleGenerate}
         onSave={handleSave}
         onMarkComplete={handleMarkComplete}

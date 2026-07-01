@@ -12,6 +12,7 @@ type HoldingsStepProps = {
   baseCurrency: string;
   onChange: (value: HoldingInput[]) => void;
   errors?: Record<string, string>;
+  optional?: boolean;
 };
 
 const ASSET_TYPES = ["etf", "stock", "cash", "crypto", "other"] as const;
@@ -33,6 +34,7 @@ export function HoldingsStep({
   baseCurrency,
   onChange,
   errors,
+  optional = false,
 }: HoldingsStepProps) {
   function updateHolding(index: number, patch: Partial<HoldingInput>) {
     onChange(
@@ -109,7 +111,9 @@ export function HoldingsStep({
       <div className="space-y-4">
         {value.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            No holdings yet. Add at least one position.
+            {optional
+              ? "No holdings yet. You can skip this step and add holdings after you invest manually."
+              : "No holdings yet. Add at least one position."}
           </p>
         )}
 

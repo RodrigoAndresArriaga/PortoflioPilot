@@ -8,6 +8,7 @@ import {
   CalendarIcon,
   LayoutDashboardIcon,
   NewspaperIcon,
+  RocketIcon,
   SettingsIcon,
 } from "lucide-react";
 
@@ -42,6 +43,11 @@ const navItems = [
     href: "/news-input",
     label: "News input",
     icon: NewspaperIcon,
+  },
+  {
+    href: "/initial-recommendation",
+    label: "Initial recommendation",
+    icon: RocketIcon,
   },
   {
     href: "/settings",

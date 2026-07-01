@@ -218,3 +218,15 @@ Rules:
 - No secrets in committed files
 
 Security implementation begins in **B1**. Portfolio table RLS is implemented in **B2**.
+
+---
+
+## P2 — Initial Recommendation Tables (migration 009)
+
+`initial_recommendation_reports` and `initial_recommendation_items` follow the standard user-ownership pattern:
+
+- RLS enabled on both tables
+- Policies: SELECT / INSERT / UPDATE / DELETE for `authenticated` where `auth.uid() = user_id`
+- No cross-user reads; no service-role bypass in app code
+
+Profile columns `investment_status`, `initial_investment_amount`, and `setup_attention_dismissed` inherit existing `profiles` RLS (user can update own row only).

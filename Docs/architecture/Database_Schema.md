@@ -36,6 +36,9 @@ One row per authenticated user. Private user settings.
 | `cash_reserve_percent` | numeric(5,2) NOT NULL | default 5; % of monthly amount held as cash |
 | `max_individual_stock_percent` | numeric(5,2) NOT NULL | default 15; concentration block threshold |
 | `onboarding_completed` | boolean NOT NULL | default false |
+| `investment_status` | text NOT NULL | default `'unknown'`; `unknown` / `not_invested_yet` / `has_investments` (P2, migration 009) |
+| `initial_investment_amount` | numeric(14,2) | nullable; first lump-sum for initial recommendation; defaults to monthly amount in engine |
+| `setup_attention_dismissed` | boolean NOT NULL | default false; soft-dismiss for setup banner (P2) |
 | `created_at` | timestamptz NOT NULL | default now() |
 | `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
 
@@ -129,13 +132,72 @@ One generated buy plan per portfolio per month.
 | `month` | text NOT NULL | `YYYY-MM` format |
 | `monthly_amount` | numeric(14,2) NOT NULL | check >= 0 |
 | `currency` | text NOT NULL | default `'MXN'` |
-| `status` | text NOT NULL | `draft` / `confirmed` / `completed` |
+| `status` | text NOT NULL | `draft` / `confirmed` / `completed` / `initial_recommendation` / `manual_review` |
+| `plan_kind` | text NOT NULL | default `'monthly'`; `monthly` or `initial` (P2) |
 | `created_at` | timestamptz NOT NULL | default now() |
 | `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
 
-Constraints: `unique (portfolio_id, month)`.
+Constraints: `unique (portfolio_id, month, plan_kind)`.
 
-**B4 migration:** see `supabase/migrations/004_monthly_plans.sql`.
+**B4 migration:** see `supabase/migrations/004_monthly_plans.sql`. **P2:** migration `009_initial_investment_flow.sql` adds `plan_kind` and extended status values.
+
+---
+
+## initial_recommendation_reports (P2)
+
+One-time initial investment research reports pasted from ChatGPT.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid PK | |
+| `user_id` | uuid NOT NULL FK | |
+| `portfolio_id` | uuid NOT NULL FK | |
+| `report_date` | date NOT NULL | |
+| `report_type` | text NOT NULL | default `initial_investment_research` |
+| `user_currency` | text NOT NULL | |
+| `monthly_investment_amount` | numeric(14,2) | |
+| `initial_investment_amount` | numeric(14,2) | |
+| `risk_profile` | text | |
+| `time_horizon` | text | |
+| `market_regime` | text | |
+| `overall_risk_level` | text | |
+| `summary` | text | |
+| `payload_jsonb` | jsonb NOT NULL | full pasted JSON |
+| `created_at` | timestamptz NOT NULL | |
+
+---
+
+## initial_recommendation_items (P2)
+
+Normalized symbol rows from an initial research report.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid PK | |
+| `user_id` | uuid NOT NULL FK | |
+| `portfolio_id` | uuid NOT NULL FK | |
+| `report_id` | uuid NOT NULL FK | references `initial_recommendation_reports(id)` |
+| `symbol` | text NOT NULL | |
+| `asset_name` | text | |
+| `asset_type` | text NOT NULL | |
+| `suggested_role` | text | core / growth / satellite / cash_reserve / avoid / manual_review |
+| `recommendation_direction` | text | |
+| `ai_bias` | text | |
+| `news_direction` | text | |
+| `fundamental_score` | numeric(6,2) | |
+| `news_score` | numeric(6,2) | |
+| `news_confidence` | numeric(6,2) | |
+| `risk_score` | numeric(6,2) | |
+| `valuation_risk` | text | |
+| `event_type` | text | |
+| `impact_horizon` | text | |
+| `risk_flags` | text[] NOT NULL | default `{}` |
+| `source_count` | int NOT NULL | default 0 |
+| `one_sentence_reason` | text | |
+| `manual_notes` | text | |
+| `created_at` | timestamptz NOT NULL | |
+
+**P2 migration:** see `supabase/migrations/009_initial_investment_flow.sql`.
 
 ---
 

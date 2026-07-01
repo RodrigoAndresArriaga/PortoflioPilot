@@ -4,6 +4,11 @@ export type WatchlistAssetType = "etf" | "stock";
 
 export type WatchlistBucket = "core_etf" | "growth";
 
+export type InvestmentStatus =
+  | "unknown"
+  | "not_invested_yet"
+  | "has_investments";
+
 export type Profile = {
   id: string;
   full_name: string | null;
@@ -12,6 +17,9 @@ export type Profile = {
   investment_day: number;
   risk_profile: string;
   time_horizon: string;
+  investment_status: InvestmentStatus;
+  initial_investment_amount: number | null;
+  setup_attention_dismissed: boolean;
   broad_etf_priority: boolean;
   cash_reserve_percent: number;
   max_individual_stock_percent: number;
@@ -86,7 +94,14 @@ export type WatchlistItem = {
   updated_at: string;
 };
 
-export type MonthlyPlanStatus = "draft" | "confirmed" | "completed";
+export type MonthlyPlanStatus =
+  | "draft"
+  | "confirmed"
+  | "completed"
+  | "initial_recommendation"
+  | "manual_review";
+
+export type MonthlyPlanKind = "monthly" | "initial";
 
 export type MonthlyPlan = {
   id: string;
@@ -96,6 +111,7 @@ export type MonthlyPlan = {
   monthly_amount: number;
   currency: string;
   status: MonthlyPlanStatus;
+  plan_kind: MonthlyPlanKind;
   created_at: string;
   updated_at: string;
 };
@@ -235,6 +251,66 @@ export type MonthlyPlanItemUpdate = Partial<
   Omit<MonthlyPlanItem, "id" | "monthly_plan_id" | "created_at">
 >;
 
+export type InitialRecommendationReport = {
+  id: string;
+  user_id: string;
+  portfolio_id: string;
+  report_date: string;
+  report_type: string;
+  user_currency: string;
+  monthly_investment_amount: number | null;
+  initial_investment_amount: number | null;
+  risk_profile: string | null;
+  time_horizon: string | null;
+  market_regime: string | null;
+  overall_risk_level: string | null;
+  summary: string | null;
+  payload_jsonb: unknown;
+  created_at: string;
+};
+
+export type InitialRecommendationItem = {
+  id: string;
+  user_id: string;
+  portfolio_id: string;
+  report_id: string;
+  symbol: string;
+  asset_name: string | null;
+  asset_type: string;
+  suggested_role: string | null;
+  recommendation_direction: string | null;
+  ai_bias: string | null;
+  news_direction: string | null;
+  fundamental_score: number | null;
+  news_score: number | null;
+  news_confidence: number | null;
+  risk_score: number | null;
+  valuation_risk: string | null;
+  event_type: string | null;
+  impact_horizon: string | null;
+  risk_flags: string[];
+  source_count: number;
+  one_sentence_reason: string | null;
+  manual_notes: string | null;
+  created_at: string;
+};
+
+export type InitialRecommendationReportInsert = Omit<
+  InitialRecommendationReport,
+  "id" | "created_at"
+> & {
+  id?: string;
+  created_at?: string;
+};
+
+export type InitialRecommendationItemInsert = Omit<
+  InitialRecommendationItem,
+  "id" | "created_at"
+> & {
+  id?: string;
+  created_at?: string;
+};
+
 export type ManualNewsInputInsert = Omit<
   ManualNewsInput,
   "id" | "created_at" | "updated_at"
@@ -290,6 +366,23 @@ export type Database = {
         Row: ManualNewsInput;
         Insert: ManualNewsInputInsert;
         Update: ManualNewsInputUpdate;
+      };
+      initial_recommendation_reports: {
+        Row: InitialRecommendationReport;
+        Insert: InitialRecommendationReportInsert;
+        Update: Partial<
+          Omit<InitialRecommendationReport, "id" | "user_id" | "created_at">
+        >;
+      };
+      initial_recommendation_items: {
+        Row: InitialRecommendationItem;
+        Insert: InitialRecommendationItemInsert;
+        Update: Partial<
+          Omit<
+            InitialRecommendationItem,
+            "id" | "user_id" | "report_id" | "created_at"
+          >
+        >;
       };
     };
   };

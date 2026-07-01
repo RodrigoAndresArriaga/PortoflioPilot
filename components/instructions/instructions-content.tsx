@@ -17,6 +17,8 @@ type InstructionsContentProps = {
   dailyPrompt: string;
   weeklyPrompt: string;
   monthlyPrompt: string;
+  initialInvestmentPrompt: string;
+  showInitialPrompt: boolean;
 };
 
 export function InstructionsContent({
@@ -24,6 +26,8 @@ export function InstructionsContent({
   dailyPrompt,
   weeklyPrompt,
   monthlyPrompt,
+  initialInvestmentPrompt,
+  showInitialPrompt,
 }: InstructionsContentProps) {
   const hasWatchlist = symbols.length > 0;
 
@@ -164,6 +168,41 @@ export function InstructionsContent({
       <section className="space-y-4">
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-foreground">
+            Initial investment research workflow
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            For users who are not invested yet — generate structured research
+            before your first manual investment.
+          </p>
+        </div>
+
+        <WorkflowSection
+          title="Initial investment research"
+          schedule="Before your first manual investment"
+          purpose="Produce structured initial investment research for your watchlist without making final buy decisions."
+          steps={[
+            "Copy the Initial Investment Research Prompt below.",
+            "Run it manually in ChatGPT.",
+            <>
+              Paste the JSON output on the{" "}
+              <Link
+                href="/initial-recommendation"
+                className="font-medium underline underline-offset-4"
+              >
+                initial recommendation page
+              </Link>
+              .
+            </>,
+            "Review engine-generated manual buy amounts before investing.",
+            "After you invest manually, add your actual holdings in PortfolioPilot.",
+          ]}
+          outputNote="ChatGPT provides research input only. The app recommendation engine generates final suggested manual amounts."
+        />
+      </section>
+
+      <section className="space-y-4">
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold text-foreground">
             Copyable personalized prompts
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -174,6 +213,15 @@ export function InstructionsContent({
         </div>
 
         <div className="space-y-4">
+          {showInitialPrompt && (
+            <PromptCard
+              title="Initial investment research"
+              schedule="Before your first manual investment"
+              description="Structured research for your watchlist to support an initial manual investment recommendation."
+              prompt={initialInvestmentPrompt}
+              copyDisabled={!hasWatchlist}
+            />
+          )}
           <PromptCard
             title="Daily urgent scan"
             schedule="Weekdays after U.S. market close"

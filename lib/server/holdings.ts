@@ -29,6 +29,28 @@ function isDuplicateSymbolError(message: string): boolean {
   return message.includes("holdings_portfolio_id_symbol_key");
 }
 
+async function markProfileAfterFirstHolding(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<void> {
+  const { count } = await supabase
+    .from("holdings")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if ((count ?? 0) !== 1) {
+    return;
+  }
+
+  await supabase
+    .from("profiles")
+    .update({
+      investment_status: "has_investments",
+      setup_attention_dismissed: true,
+    })
+    .eq("id", userId);
+}
+
 export async function getHoldings(
   options: GetHoldingsOptions = {},
 ): Promise<Holding[] | null> {
@@ -131,8 +153,12 @@ export async function createHolding(
     }
   }
 
+  await markProfileAfterFirstHolding(supabase, user.id);
+
   revalidatePath("/dashboard");
   revalidatePath("/holdings");
+  revalidatePath("/monthly-plan");
+  revalidatePath("/initial-recommendation");
 
   return { ok: true, data: result };
 }

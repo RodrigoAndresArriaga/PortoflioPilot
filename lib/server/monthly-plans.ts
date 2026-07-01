@@ -57,6 +57,7 @@ async function persistMonthlyPlan(
     .select("id")
     .eq("portfolio_id", portfolioId)
     .eq("month", payload.month)
+    .eq("plan_kind", payload.plan_kind ?? "monthly")
     .maybeSingle();
 
   if (existingError) {
@@ -72,6 +73,7 @@ async function persistMonthlyPlan(
         monthly_amount: payload.monthly_amount,
         currency: payload.currency,
         status: payload.status,
+        plan_kind: payload.plan_kind ?? "monthly",
       })
       .eq("id", planId)
       .eq("user_id", userId)
@@ -94,6 +96,7 @@ async function persistMonthlyPlan(
         monthly_amount: payload.monthly_amount,
         currency: payload.currency,
         status: payload.status,
+        plan_kind: payload.plan_kind ?? "monthly",
       })
       .select("*")
       .single();
@@ -304,6 +307,7 @@ export async function getMonthlyPlan(
     .eq("user_id", auth.user.id)
     .eq("portfolio_id", portfolio.id)
     .eq("month", month)
+    .eq("plan_kind", "monthly")
     .maybeSingle();
 
   if (planError) {

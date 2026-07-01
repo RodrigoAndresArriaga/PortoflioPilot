@@ -9,6 +9,7 @@ type MonthlyPlanActionsProps = {
   isSaving: boolean;
   isCompleting: boolean;
   canMarkComplete: boolean;
+  canGenerate?: boolean;
   onGenerate: () => void;
   onSave: () => void;
   onMarkComplete: () => void;
@@ -21,6 +22,7 @@ export function MonthlyPlanActions({
   isSaving,
   isCompleting,
   canMarkComplete,
+  canGenerate = true,
   onGenerate,
   onSave,
   onMarkComplete,
@@ -35,7 +37,7 @@ export function MonthlyPlanActions({
         type="button"
         variant={hasPlan ? "outline" : "default"}
         onClick={onGenerate}
-        disabled={isGenerating || isSaving || isCompleting}
+        disabled={isGenerating || isSaving || isCompleting || !canGenerate}
       >
         {isGenerating
           ? "Generating..."

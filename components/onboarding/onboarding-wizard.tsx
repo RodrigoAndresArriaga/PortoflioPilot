@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { CurrencyStep } from "@/components/onboarding/steps/currency-step";
 import { HoldingsStep } from "@/components/onboarding/steps/holdings-step";
+import { InvestmentStatusStep } from "@/components/onboarding/steps/investment-status-step";
 import { InvestorProfileStep } from "@/components/onboarding/steps/investor-profile-step";
 import { RecommendationPreviewStep } from "@/components/onboarding/steps/recommendation-preview-step";
 import { WatchlistStep } from "@/components/onboarding/steps/watchlist-step";
@@ -19,45 +20,57 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { completeOnboarding } from "@/lib/server/onboarding";
+import {
+  completeOnboarding,
+  resumeOnboardingUpdate,
+} from "@/lib/server/onboarding";
 import {
   currencyStepSchema,
   formatZodErrors,
   getDefaultOnboardingFormData,
   holdingsStepSchema,
+  investmentStatusStepSchema,
   investorProfileStepSchema,
   mergeHoldingsIntoWatchlist,
+  optionalHoldingsStepSchema,
   type OnboardingFormData,
   watchlistStepSchema,
 } from "@/lib/validation/onboarding";
 
 type OnboardingWizardProps = {
   initialBaseCurrency?: string;
+  mode?: "setup" | "resume";
+  initialFormData?: OnboardingFormData;
 };
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 export function OnboardingWizard({
   initialBaseCurrency = "MXN",
+  mode = "setup",
+  initialFormData,
 }: OnboardingWizardProps) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState<OnboardingFormData>(() =>
-    getDefaultOnboardingFormData(initialBaseCurrency),
+  const [step, setStep] = useState(mode === "resume" ? 1 : 0);
+  const [formData, setFormData] = useState<OnboardingFormData>(
+    () => initialFormData ?? getDefaultOnboardingFormData(initialBaseCurrency),
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const isResume = mode === "resume";
+  const holdingsOptional = formData.investment_status === "not_invested_yet";
+
   const stepLabel = useMemo(() => {
     if (step === 0) {
       return "Welcome";
     }
-    if (step === 5) {
-      return "First recommendation preview";
+    if (step === 6) {
+      return isResume ? "Review changes" : "First recommendation preview";
     }
     return `Step ${step} of ${TOTAL_STEPS - 1}`;
-  }, [step]);
+  }, [isResume, step]);
 
   function updateFormData(patch: Partial<OnboardingFormData>) {
     setFormData((current) => ({ ...current, ...patch }));
@@ -76,6 +89,7 @@ export function OnboardingWizard({
         base_currency: formData.base_currency,
         monthly_investment_amount: formData.monthly_investment_amount,
         investment_day: formData.investment_day,
+        initial_investment_amount: formData.initial_investment_amount,
       });
       if (!result.success) {
         setErrors(formatZodErrors(result.error));
@@ -99,11 +113,26 @@ export function OnboardingWizard({
     }
 
     if (step === 3) {
+      const result = investmentStatusStepSchema.safeParse({
+        investment_status: formData.investment_status,
+      });
+      if (!result.success) {
+        setErrors(formatZodErrors(result.error));
+        return false;
+      }
+      updateFormData(result.data);
+      return true;
+    }
+
+    if (step === 4) {
       const holdingsWithCurrency = formData.holdings.map((holding) => ({
         ...holding,
         currency: formData.base_currency,
       }));
-      const result = holdingsStepSchema.safeParse({
+      const schema = holdingsOptional
+        ? optionalHoldingsStepSchema
+        : holdingsStepSchema;
+      const result = schema.safeParse({
         holdings: holdingsWithCurrency,
       });
       if (!result.success) {
@@ -120,7 +149,7 @@ export function OnboardingWizard({
       return true;
     }
 
-    if (step === 4) {
+    if (step === 5) {
       const result = watchlistStepSchema.safeParse({
         watchlist: formData.watchlist,
       });
@@ -132,7 +161,7 @@ export function OnboardingWizard({
       return true;
     }
 
-    if (step === 5) {
+    if (step === 6) {
       return true;
     }
 
@@ -149,7 +178,16 @@ export function OnboardingWizard({
   function handleBack() {
     setErrors({});
     setSubmitError(null);
-    setStep((current) => Math.max(current - 1, 0));
+    setStep((current) => Math.max(current - 1, isResume ? 1 : 0));
+  }
+
+  function handleSkipHoldings() {
+    if (!holdingsOptional) {
+      return;
+    }
+    updateFormData({ holdings: [] });
+    setErrors({});
+    setStep(5);
   }
 
   async function handleComplete() {
@@ -169,7 +207,9 @@ export function OnboardingWizard({
         })),
       };
 
-      const result = await completeOnboarding(payload);
+      const result = isResume
+        ? await resumeOnboardingUpdate(payload)
+        : await completeOnboarding(payload);
 
       if (!result.ok) {
         setSubmitError(result.error);
@@ -187,7 +227,7 @@ export function OnboardingWizard({
     <Card className="w-full max-w-2xl">
       <CardHeader>
         <CardDescription>{stepLabel}</CardDescription>
-        <CardTitle>Profile setup</CardTitle>
+        <CardTitle>{isResume ? "Update setup" : "Profile setup"}</CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -199,6 +239,7 @@ export function OnboardingWizard({
               base_currency: formData.base_currency,
               monthly_investment_amount: formData.monthly_investment_amount,
               investment_day: formData.investment_day,
+              initial_investment_amount: formData.initial_investment_amount,
             }}
             onChange={(value) => updateFormData(value)}
             errors={errors}
@@ -217,15 +258,24 @@ export function OnboardingWizard({
         )}
 
         {step === 3 && (
-          <HoldingsStep
-            value={formData.holdings}
-            baseCurrency={formData.base_currency}
-            onChange={(holdings) => updateFormData({ holdings })}
+          <InvestmentStatusStep
+            value={{ investment_status: formData.investment_status }}
+            onChange={(value) => updateFormData(value)}
             errors={errors}
           />
         )}
 
         {step === 4 && (
+          <HoldingsStep
+            value={formData.holdings}
+            baseCurrency={formData.base_currency}
+            onChange={(holdings) => updateFormData({ holdings })}
+            errors={errors}
+            optional={holdingsOptional}
+          />
+        )}
+
+        {step === 5 && (
           <WatchlistStep
             value={formData.watchlist}
             holdings={formData.holdings}
@@ -234,7 +284,12 @@ export function OnboardingWizard({
           />
         )}
 
-        {step === 5 && <RecommendationPreviewStep formData={formData} />}
+        {step === 6 && (
+          <RecommendationPreviewStep
+            formData={formData}
+            isResume={isResume}
+          />
+        )}
 
         {submitError && (
           <Alert variant="destructive">
@@ -249,20 +304,37 @@ export function OnboardingWizard({
             type="button"
             variant="outline"
             onClick={handleBack}
-            disabled={loading || step === 1}
+            disabled={loading || step === (isResume ? 1 : 1)}
           >
             Back
           </Button>
 
-          {step < TOTAL_STEPS - 1 ? (
-            <Button type="button" onClick={handleNext} disabled={loading}>
-              Next
-            </Button>
-          ) : (
-            <Button type="button" onClick={handleComplete} disabled={loading}>
-              {loading ? "Saving..." : "Complete setup"}
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {step === 4 && holdingsOptional && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleSkipHoldings}
+                disabled={loading}
+              >
+                Skip for now
+              </Button>
+            )}
+
+            {step < TOTAL_STEPS - 1 ? (
+              <Button type="button" onClick={handleNext} disabled={loading}>
+                Next
+              </Button>
+            ) : (
+              <Button type="button" onClick={handleComplete} disabled={loading}>
+                {loading
+                  ? "Saving..."
+                  : isResume
+                    ? "Save changes"
+                    : "Complete setup"}
+              </Button>
+            )}
+          </div>
         </CardFooter>
       )}
     </Card>

@@ -16,6 +16,7 @@ Milestone-ordered build plan for PortfolioPilot. Each milestone has a clear entr
 | **B6** | Manual ChatGPT news layer | Phase 6 | Planned |
 | **B7** | Email alerts (Resend) | Phase 7 | Planned |
 | **P1** | Remove target allocations; decision engine primary | Phase 3/4 refactor | Done |
+| **P2** | Initial investment flow for not-invested users | Phase 2/3 extension | Done |
 | **B8+** | Later improvements (market data API, backtesting, sharing) | Phase 8 | Planned |
 
 ---
@@ -156,6 +157,45 @@ Milestone-ordered build plan for PortfolioPilot. Each milestone has a clear entr
 - Install and configure Resend
 - Email templates: monthly plan ready, urgent risk warning, investment reminder, manual review required
 - Server-side email dispatch on plan generation and risk events
+
+---
+
+## P2 — Initial Investment Recommendation Engine (Done)
+
+**Scope:**
+- Onboarding investment status (`not_invested_yet` / `has_investments`)
+- Optional holdings during onboarding for new investors
+- Initial investment research prompt on `/instructions`
+- Paste workflow on `/initial-recommendation`
+- `initial_recommendation_reports` + `initial_recommendation_items` tables
+- Dedicated initial investment engine (`lib/engine/initial-investment.ts`)
+- `monthly_plans` row with `plan_kind = initial` and `status = initial_recommendation`
+- Setup attention banner + dashboard setup card
+- Onboarding resume mode (`/onboarding?mode=resume`)
+
+**Exit criteria:**
+- New user can complete onboarding with zero holdings
+- Initial research JSON validates and persists
+- Engine produces manual buy amounts with stock caps and cash reserve
+- Floating banner appears for not-invested / zero-holdings users
+- No broker or OpenAI API integration
+
+**Non-goals:** broker sync, automatic trading, OpenAI API automation.
+
+---
+
+## P3 — Transition to Regular Monthly Plan (Done)
+
+**Scope:** Guided transition after initial recommendation + holdings added. No auto-generation.
+
+- `lib/portfolio-lifecycle.ts` — computed lifecycle stages and monthly plan readiness
+- `lib/server/portfolio-lifecycle.ts` — `getPortfolioLifecycleSnapshot()`
+- Transition banner when `ready_for_first_monthly` (initial plan + holdings, no monthly plan)
+- Dashboard `MonthlyPlanTransitionCard` with CTA to `/monthly-plan`
+- Monthly plan page shows readiness alert; missing weekly news uses neutral defaults (non-blocking)
+- First holding added via CRUD updates `investment_status` to `has_investments`
+
+**Non-goals:** scheduled auto-generation, workflow tables, email alerts for transition.
 
 ---
 

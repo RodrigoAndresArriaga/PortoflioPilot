@@ -33,12 +33,17 @@ export const currencyStepSchema = z.object({
   base_currency: baseCurrencySchema,
   monthly_investment_amount: z.coerce
     .number()
-    .min(0, "Monthly amount must be zero or greater"),
+    .min(0.01, "Monthly amount must be greater than zero"),
   investment_day: z.coerce
     .number()
     .int()
     .min(1, "Day must be between 1 and 31")
     .max(31, "Day must be between 1 and 31"),
+  initial_investment_amount: z.coerce
+    .number()
+    .min(0, "Initial amount must be zero or greater")
+    .nullable()
+    .optional(),
 });
 
 export const investorProfileStepSchema = z.object({
@@ -46,21 +51,35 @@ export const investorProfileStepSchema = z.object({
   time_horizon: timeHorizonSchema,
 });
 
+export const investmentStatusSchema = z.enum([
+  "not_invested_yet",
+  "has_investments",
+]);
+
+export const investmentStatusStepSchema = z.object({
+  investment_status: investmentStatusSchema,
+});
+
+const holdingsArraySchema = z.array(holdingInputSchema).superRefine((data, ctx) => {
+  const symbols = data.map((h) => h.symbol.trim().toUpperCase());
+  const unique = new Set(symbols);
+  if (unique.size !== symbols.length) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Duplicate symbols are not allowed",
+      path: ["holdings"],
+    });
+  }
+});
+
 export const holdingsStepSchema = z
   .object({
-    holdings: z.array(holdingInputSchema).min(1, "Add at least one holding"),
-  })
-  .superRefine((data, ctx) => {
-    const symbols = data.holdings.map((h) => h.symbol.trim().toUpperCase());
-    const unique = new Set(symbols);
-    if (unique.size !== symbols.length) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Duplicate symbols are not allowed",
-        path: ["holdings"],
-      });
-    }
+    holdings: holdingsArraySchema.min(1, "Add at least one holding"),
   });
+
+export const optionalHoldingsStepSchema = z.object({
+  holdings: holdingsArraySchema,
+});
 
 export const watchlistStepSchema = z.object({
   watchlist: z
@@ -68,30 +87,49 @@ export const watchlistStepSchema = z.object({
     .min(1, "Select at least one watchlist symbol"),
 });
 
-export const onboardingPayloadSchema = z.object({
+const onboardingBaseSchema = z.object({
   base_currency: baseCurrencySchema,
   monthly_investment_amount: z.coerce
     .number()
-    .min(0, "Monthly amount must be zero or greater"),
+    .min(0.01, "Monthly amount must be greater than zero"),
   investment_day: z.coerce
     .number()
     .int()
     .min(1, "Day must be between 1 and 31")
     .max(31, "Day must be between 1 and 31"),
+  initial_investment_amount: z.coerce
+    .number()
+    .min(0, "Initial amount must be zero or greater")
+    .nullable()
+    .optional(),
   risk_profile: riskProfileSchema,
   time_horizon: timeHorizonSchema,
-  holdings: z.array(holdingInputSchema).min(1, "Add at least one holding"),
   watchlist: z
     .array(watchlistItemInputSchema)
     .min(1, "Select at least one watchlist symbol"),
 });
 
+export const onboardingPayloadSchema = z.discriminatedUnion("investment_status", [
+  onboardingBaseSchema.extend({
+    investment_status: z.literal("has_investments"),
+    holdings: z.array(holdingInputSchema).min(1, "Add at least one holding"),
+  }),
+  onboardingBaseSchema.extend({
+    investment_status: z.literal("not_invested_yet"),
+    holdings: z.array(holdingInputSchema),
+  }),
+]);
+
+export const onboardingResumeUpdateSchema = onboardingPayloadSchema;
+
 export type CurrencyStepData = z.infer<typeof currencyStepSchema>;
 export type InvestorProfileStepData = z.infer<typeof investorProfileStepSchema>;
+export type InvestmentStatusStepData = z.infer<typeof investmentStatusStepSchema>;
 export type HoldingsStepData = z.infer<typeof holdingsStepSchema>;
 export type WatchlistStepData = z.infer<typeof watchlistStepSchema>;
 export type OnboardingPayload = z.infer<typeof onboardingPayloadSchema>;
 export type OnboardingFormData = OnboardingPayload;
+export type InvestmentStatus = z.infer<typeof investmentStatusSchema>;
 
 export const DEFAULT_WATCHLIST_OPTIONS = [
   { symbol: "VOO", asset_name: "Vanguard S&P 500 ETF", asset_type: "etf" as const, bucket: "core_etf" as const },
@@ -211,8 +249,10 @@ export function getDefaultOnboardingFormData(
     base_currency: baseCurrency as OnboardingFormData["base_currency"],
     monthly_investment_amount: 4000,
     investment_day: 1,
+    initial_investment_amount: null,
     risk_profile: "growth",
     time_horizon: "10_plus_years",
+    investment_status: "has_investments",
     holdings: [],
     watchlist: [],
   };

@@ -95,6 +95,7 @@ export function buildMonthlyPlanPayload(
       monthly_amount: profile.monthly_investment_amount,
       currency,
       status: "draft",
+      plan_kind: "monthly",
       items,
     },
   };

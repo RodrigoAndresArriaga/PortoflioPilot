@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { requireCurrentUserProfile } from "@/lib/server/profile";
+import { getPortfolioLifecycleSnapshot } from "@/lib/server/portfolio-lifecycle";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsLayout({
@@ -15,21 +16,28 @@ export default async function SettingsLayout({
     redirect("/onboarding");
   }
 
+  const lifecycle = await getPortfolioLifecycleSnapshot();
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   return (
-    <AppShell profile={profile} email={user?.email} pageTitle="Settings">
+    <AppShell
+      profile={profile}
+      email={user?.email}
+      pageTitle="Settings"
+      lifecycle={lifecycle}
+    >
       <div className="mx-auto w-full max-w-4xl space-y-8">
         <div className="space-y-2">
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
             Settings
           </h2>
           <p className="text-muted-foreground">
-            Manage your profile, investment strategy, watchlist,
-            watchlist, and email alerts.
+            Manage your profile, investment strategy, watchlist, and email
+            alerts.
           </p>
         </div>
 
