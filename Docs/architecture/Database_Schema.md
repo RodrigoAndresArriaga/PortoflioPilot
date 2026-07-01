@@ -130,35 +130,45 @@ Constraints: `unique (user_id, symbol)`.
 
 ## monthly_plans
 
-One plan per portfolio per month.
+One generated buy plan per portfolio per month.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | uuid PK | |
-| `user_id` | uuid FK | references `auth.users(id)` |
-| `portfolio_id` | uuid FK | references `portfolios(id)` |
-| `month` | text | e.g. `2026-07` |
-| `monthly_amount` | numeric | |
-| `currency` | text | |
-| `status` | text | draft / confirmed / executed |
-| `created_at` | timestamptz | |
+| `id` | uuid PK | default `gen_random_uuid()` |
+| `user_id` | uuid NOT NULL FK | references `auth.users(id)` ON DELETE CASCADE |
+| `portfolio_id` | uuid NOT NULL FK | references `portfolios(id)` ON DELETE CASCADE |
+| `month` | text NOT NULL | `YYYY-MM` format |
+| `monthly_amount` | numeric(14,2) NOT NULL | check >= 0 |
+| `currency` | text NOT NULL | default `'MXN'` |
+| `status` | text NOT NULL | `draft` / `confirmed` / `completed` |
+| `created_at` | timestamptz NOT NULL | default now() |
+| `updated_at` | timestamptz NOT NULL | default now(), auto-updated via trigger |
+
+Constraints: `unique (portfolio_id, month)`.
+
+**B4 migration:** see `supabase/migrations/004_monthly_plans.sql`.
 
 ---
 
 ## monthly_plan_items
 
-Line items within a monthly plan.
+Per-symbol line items within a monthly plan.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | uuid PK | |
-| `monthly_plan_id` | uuid FK | references `monthly_plans(id)` |
-| `symbol` | text | |
-| `target_weight` | numeric | |
-| `current_weight` | numeric | |
-| `recommended_amount` | numeric | algorithm output |
-| `adjusted_amount` | numeric | after news modifier |
-| `reason` | text | e.g. news risk reduction |
+| `id` | uuid PK | default `gen_random_uuid()` |
+| `monthly_plan_id` | uuid NOT NULL FK | references `monthly_plans(id)` ON DELETE CASCADE |
+| `symbol` | text NOT NULL | normalized uppercase |
+| `target_weight` | numeric(8,4) NOT NULL | 0–1 decimal |
+| `current_weight` | numeric(8,4) NOT NULL | 0–1 decimal |
+| `recommended_amount` | numeric(14,2) NOT NULL | check >= 0; engine output |
+| `adjusted_amount` | numeric(14,2) NOT NULL | check >= 0; equals recommended until news layer |
+| `reason` | text NOT NULL | engine status reason |
+| `created_at` | timestamptz NOT NULL | default now() |
+
+Constraints: `unique (monthly_plan_id, symbol)`.
+
+RLS on items is scoped through `monthly_plans.user_id` ownership.
 
 ---
 
@@ -233,6 +243,6 @@ TypeScript types: `types/database.ts`
 | holdings | B2 | Implemented — `002_portfolio_schema.sql` |
 | target_allocations | B2 | Implemented — `002_portfolio_schema.sql` |
 | watchlist_items | B2 | Implemented — `002_portfolio_schema.sql` |
-| monthly_plans | B3 | Spec only |
-| monthly_plan_items | B3 | Spec only |
+| monthly_plans | B4 | Implemented — `004_monthly_plans.sql` |
+| monthly_plan_items | B4 | Implemented — `004_monthly_plans.sql` |
 | manual_news_inputs | B6 | Spec only |

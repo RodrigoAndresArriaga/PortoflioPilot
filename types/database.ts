@@ -109,6 +109,37 @@ export type WatchlistItem = {
   updated_at: string;
 };
 
+export type MonthlyPlanStatus = "draft" | "confirmed" | "completed";
+
+export type MonthlyPlan = {
+  id: string;
+  user_id: string;
+  portfolio_id: string;
+  month: string;
+  monthly_amount: number;
+  currency: string;
+  status: MonthlyPlanStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MonthlyPlanItem = {
+  id: string;
+  monthly_plan_id: string;
+  symbol: string;
+  target_weight: number;
+  current_weight: number;
+  recommended_amount: number;
+  adjusted_amount: number;
+  reason: string;
+  created_at: string;
+};
+
+export type MonthlyPlanWithItems = {
+  plan: MonthlyPlan;
+  items: MonthlyPlanItem[];
+};
+
 export type ProfileInsert = Omit<
   Profile,
   "created_at" | "updated_at"
@@ -199,6 +230,31 @@ export type WatchlistItemUpdate = Partial<
   Omit<WatchlistItem, "id" | "user_id" | "created_at" | "updated_at">
 >;
 
+export type MonthlyPlanInsert = Omit<
+  MonthlyPlan,
+  "id" | "created_at" | "updated_at"
+> & {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type MonthlyPlanUpdate = Partial<
+  Omit<MonthlyPlan, "id" | "user_id" | "created_at" | "updated_at">
+>;
+
+export type MonthlyPlanItemInsert = Omit<
+  MonthlyPlanItem,
+  "id" | "created_at"
+> & {
+  id?: string;
+  created_at?: string;
+};
+
+export type MonthlyPlanItemUpdate = Partial<
+  Omit<MonthlyPlanItem, "id" | "monthly_plan_id" | "created_at">
+>;
+
 export type Database = {
   public: {
     Tables: {
@@ -236,6 +292,16 @@ export type Database = {
         Row: WatchlistItem;
         Insert: WatchlistItemInsert;
         Update: WatchlistItemUpdate;
+      };
+      monthly_plans: {
+        Row: MonthlyPlan;
+        Insert: MonthlyPlanInsert;
+        Update: MonthlyPlanUpdate;
+      };
+      monthly_plan_items: {
+        Row: MonthlyPlanItem;
+        Insert: MonthlyPlanItemInsert;
+        Update: MonthlyPlanItemUpdate;
       };
     };
   };
