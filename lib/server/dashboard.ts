@@ -4,6 +4,10 @@ import {
   formatInvestmentDate,
 } from "@/lib/dashboard/dates";
 import type { DashboardData } from "@/lib/dashboard/types";
+import {
+  detectPortfolioWarnings,
+  getBlockedBuySymbols,
+} from "@/lib/engine/concentration";
 import { getHoldings } from "@/lib/server/holdings";
 import {
   getCurrentMonthKey,
@@ -43,6 +47,15 @@ export async function getDashboardData(): Promise<DashboardData> {
     computeNextInvestmentDate(profile.investment_day),
   );
 
+  const warnings = detectPortfolioWarnings(
+    holdings.map((holding) => ({
+      symbol: holding.symbol,
+      asset_type: holding.asset_type,
+      current_value: holding.current_value,
+    })),
+  );
+  const blockedBuySymbols = Array.from(getBlockedBuySymbols(warnings));
+
   return {
     profile,
     totalPortfolioValue,
@@ -50,5 +63,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     allocation,
     monthlyPlan,
     watchlist,
+    warnings,
+    blockedBuySymbols,
   };
 }

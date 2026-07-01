@@ -5,6 +5,7 @@ import { AllocationDriftSection } from "@/components/dashboard/allocation-drift-
 import { DashboardStatsRow } from "@/components/dashboard/dashboard-stats-row";
 import { DashboardStatusBadges } from "@/components/dashboard/dashboard-status-badges";
 import { MonthlyPlanPreview } from "@/components/dashboard/monthly-plan-preview";
+import { RiskWarnings } from "@/components/dashboard/risk-warnings";
 import { WatchlistTable } from "@/components/dashboard/watchlist-table";
 import { AppShell } from "@/components/layout/app-shell";
 import { getDashboardData } from "@/lib/server/dashboard";
@@ -46,6 +47,12 @@ export default async function DashboardPage() {
         />
 
         <DashboardStatusBadges riskProfile={data.profile.risk_profile} />
+
+        <RiskWarnings
+          warnings={data.warnings}
+          blockedBuySymbols={data.blockedBuySymbols}
+          monthlyPlan={data.monthlyPlan}
+        />
 
         <div className="grid gap-4 lg:grid-cols-2">
           <AllocationDonutChart

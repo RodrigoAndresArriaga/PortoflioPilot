@@ -1,4 +1,5 @@
 import { isCashSymbol } from "@/lib/monthly-plan/format";
+import { applyDriftToResult } from "@/lib/engine/drift";
 import { roundMoney, sumValues } from "@/lib/engine/math";
 import type { AllocationAssetResult } from "@/lib/engine/types";
 import type { TargetBucketKey } from "@/types/database";
@@ -90,7 +91,7 @@ function createCashResult(
   const currentWeight =
     portfolioValue > 0 ? roundMoney(currentValue / portfolioValue, 4) : 0;
 
-  return {
+  const base = applyDriftToResult({
     symbol,
     current_value: currentValue,
     current_weight: currentWeight,
@@ -98,6 +99,14 @@ function createCashResult(
     target_value: roundMoney(currentValue + remainder),
     allocation_gap: remainder,
     recommended_buy: remainder,
+    status: "on_target",
+    reason: "",
+  });
+
+  return {
+    ...base,
+    recommended_buy: remainder,
+    allocation_gap: remainder,
     status: "underweight",
     reason: sweepReason("", "cash"),
   };

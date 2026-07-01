@@ -1,9 +1,9 @@
+import { applyDriftToResult, assignPriorities } from "@/lib/engine/drift";
 import { maxZero, roundMoney, sumValues } from "@/lib/engine/math";
 import type {
   AllocationAssetResult,
   AllocationEngineInput,
   AllocationEngineOutput,
-  AllocationStatus,
 } from "@/lib/engine/types";
 import {
   buildValueMap,
@@ -12,36 +12,15 @@ import {
   mergeSymbols,
 } from "@/lib/engine/weights";
 
-const ON_TARGET_EPSILON = 0.01;
-
-// derive status and reason from allocation gap
-function deriveStatus(allocationGap: number): {
-  status: AllocationStatus;
-  reason: string;
-} {
-  if (Math.abs(allocationGap) <= ON_TARGET_EPSILON) {
-    return {
-      status: "on_target",
-      reason: "Near target allocation",
-    };
-  }
-
-  if (allocationGap > 0) {
-    return {
-      status: "underweight",
-      reason: "Below target; eligible for monthly buys",
-    };
-  }
-
-  return {
-    status: "overweight",
-    reason: "At or above target; no buy this month",
-  };
-}
-
-// sort underweight assets by largest buy gap first
+// sort prioritize assets first, then by buy amount
 function sortResults(results: AllocationAssetResult[]): AllocationAssetResult[] {
   return [...results].sort((left, right) => {
+    const leftPriority = left.priority ?? Number.MAX_SAFE_INTEGER;
+    const rightPriority = right.priority ?? Number.MAX_SAFE_INTEGER;
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
     if (right.recommended_buy !== left.recommended_buy) {
       return right.recommended_buy - left.recommended_buy;
     }
@@ -73,9 +52,8 @@ export function computeTargetAllocation(
     );
     const allocationGap = roundMoney(targetValue - currentValue);
     const recommendedBuy = roundMoney(maxZero(allocationGap));
-    const { status, reason } = deriveStatus(allocationGap);
 
-    return {
+    return applyDriftToResult({
       symbol,
       current_value: roundMoney(currentValue),
       current_weight: roundMoney(currentWeight, 4),
@@ -83,19 +61,23 @@ export function computeTargetAllocation(
       target_value: targetValue,
       allocation_gap: allocationGap,
       recommended_buy: recommendedBuy,
-      status,
-      reason,
-    };
+      status: "on_target",
+      reason: "",
+    });
   });
 
-  return sortResults(results);
+  return sortResults(assignPriorities(results));
 }
 
 export type {
+  ActionStatus,
   AllocationAssetResult,
   AllocationEngineInput,
   AllocationEngineOutput,
   AllocationStatus,
+  DriftStatus,
   EngineHolding,
   EngineTargetAllocation,
 } from "@/lib/engine/types";
+
+export { DEFAULT_DRIFT_BAND_PERCENT } from "@/lib/engine/drift";

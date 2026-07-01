@@ -9,8 +9,15 @@ function findSymbol(
   return results.find((result) => result.symbol === symbol);
 }
 
+function expectDriftFields(result: NonNullable<ReturnType<typeof findSymbol>>) {
+  expect(result.drift_percent).toBeDefined();
+  expect(result.drift_status).toBeDefined();
+  expect(result.action_status).toBeDefined();
+  expect(result).toHaveProperty("priority");
+}
+
 describe("computeTargetAllocation", () => {
-  it("matches the algorithm spec VOO example", () => {
+  it("matches the algorithm spec VOO example inside the drift band", () => {
     const results = computeTargetAllocation({
       holdings: [
         { symbol: "VOO", current_value: 9200 },
@@ -21,14 +28,21 @@ describe("computeTargetAllocation", () => {
     });
 
     const voo = findSymbol(results, "VOO");
+    expect(voo).toBeDefined();
+    expectDriftFields(voo!);
 
     expect(voo).toMatchObject({
       current_value: 9200,
+      current_weight: 0.575,
       target_weight: 0.55,
       target_value: 11000,
       allocation_gap: 1800,
-      recommended_buy: 1800,
-      status: "underweight",
+      recommended_buy: 0,
+      drift_percent: 2.5,
+      drift_status: "normal",
+      action_status: "normal",
+      status: "on_target",
+      priority: null,
     });
   });
 
@@ -43,6 +57,7 @@ describe("computeTargetAllocation", () => {
       expect(result.recommended_buy).toBeGreaterThanOrEqual(0);
       expect(result.allocation_gap).toBeLessThan(0);
       expect(result.recommended_buy).toBe(0);
+      expectDriftFields(result);
     }
   });
 
@@ -60,11 +75,15 @@ describe("computeTargetAllocation", () => {
     });
 
     const voo = findSymbol(results, "VOO");
+    expect(voo).toBeDefined();
+    expectDriftFields(voo!);
 
     expect(voo).toMatchObject({
       recommended_buy: 0,
+      drift_status: "stop_buying",
+      action_status: "stop_buying",
       status: "overweight",
-      reason: "At or above target; no buy this month",
+      reason: "Above drift band; no buy this month",
     });
   });
 
@@ -84,24 +103,33 @@ describe("computeTargetAllocation", () => {
     });
 
     const underweight = results.filter(
-      (result) => result.recommended_buy > 0,
+      (result) => result.drift_status === "prioritize",
     );
-    const overweight = results.filter((result) => result.recommended_buy === 0);
+    const overweight = results.filter(
+      (result) => result.drift_status === "stop_buying",
+    );
 
     expect(underweight.length).toBeGreaterThan(0);
     expect(overweight.length).toBeGreaterThan(0);
 
+    for (const result of results) {
+      expectDriftFields(result);
+    }
+
     for (let index = 0; index < underweight.length - 1; index += 1) {
+      expect(underweight[index].priority).toBeLessThan(
+        underweight[index + 1].priority ?? Number.MAX_SAFE_INTEGER,
+      );
       expect(underweight[index].recommended_buy).toBeGreaterThanOrEqual(
         underweight[index + 1].recommended_buy,
       );
     }
 
     const firstOverweightIndex = results.findIndex(
-      (result) => result.recommended_buy === 0,
+      (result) => result.drift_status === "stop_buying",
     );
     const lastUnderweightIndex = results.findLastIndex(
-      (result) => result.recommended_buy > 0,
+      (result) => result.drift_status === "prioritize",
     );
 
     if (firstOverweightIndex >= 0 && lastUnderweightIndex >= 0) {
@@ -120,6 +148,8 @@ describe("computeTargetAllocation", () => {
     });
 
     const voo = findSymbol(results, "VOO");
+    expect(voo).toBeDefined();
+    expectDriftFields(voo!);
 
     expect(voo).toMatchObject({
       current_value: 0,
@@ -127,7 +157,10 @@ describe("computeTargetAllocation", () => {
       target_value: 7700,
       allocation_gap: 7700,
       recommended_buy: 7700,
+      drift_status: "prioritize",
+      action_status: "prioritize",
       status: "underweight",
+      priority: 1,
     });
   });
 
@@ -142,6 +175,8 @@ describe("computeTargetAllocation", () => {
     });
 
     const legacy = findSymbol(results, "LEGACY");
+    expect(legacy).toBeDefined();
+    expectDriftFields(legacy!);
 
     expect(legacy).toMatchObject({
       current_value: 2000,
@@ -149,6 +184,7 @@ describe("computeTargetAllocation", () => {
       target_value: 0,
       allocation_gap: -2000,
       recommended_buy: 0,
+      drift_status: "stop_buying",
       status: "overweight",
     });
   });
@@ -167,11 +203,15 @@ describe("computeTargetAllocation", () => {
       current_value: 0,
       target_value: 2800,
       recommended_buy: 2800,
+      drift_status: "prioritize",
+      priority: 1,
     });
     expect(findSymbol(results, "QQQ")).toMatchObject({
       current_value: 0,
       target_value: 1200,
       recommended_buy: 1200,
+      drift_status: "prioritize",
+      priority: 2,
     });
   });
 
@@ -186,6 +226,7 @@ describe("computeTargetAllocation", () => {
       target_value: 5060,
       allocation_gap: -4140,
       recommended_buy: 0,
+      drift_status: "stop_buying",
       status: "overweight",
     });
   });
@@ -205,7 +246,8 @@ describe("computeTargetAllocation", () => {
     expect(findSymbol(results, "VOO")).toMatchObject({
       symbol: "VOO",
       current_value: 9200,
-      recommended_buy: 1800,
+      recommended_buy: 0,
+      drift_status: "normal",
     });
   });
 });

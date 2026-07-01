@@ -1,4 +1,5 @@
 import type { AllocationStatus } from "@/lib/engine/types";
+import type { PortfolioWarning } from "@/lib/engine/concentration";
 import type {
   AllocationMode,
   MonthlyPlanWithItems,
@@ -35,4 +36,6 @@ export type DashboardData = {
   allocation: DashboardAllocationView;
   monthlyPlan: MonthlyPlanWithItems | null;
   watchlist: WatchlistItem[];
+  warnings: PortfolioWarning[];
+  blockedBuySymbols: string[];
 };

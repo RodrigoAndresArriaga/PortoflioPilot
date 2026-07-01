@@ -16,6 +16,10 @@ export type AllocationEngineInput = {
 
 export type AllocationStatus = "underweight" | "on_target" | "overweight";
 
+export type DriftStatus = "normal" | "prioritize" | "stop_buying";
+
+export type ActionStatus = "normal" | "prioritize" | "stop_buying";
+
 export type AllocationAssetResult = {
   symbol: string;
   current_value: number;
@@ -26,6 +30,10 @@ export type AllocationAssetResult = {
   recommended_buy: number;
   status: AllocationStatus;
   reason: string;
+  drift_percent: number;
+  drift_status: DriftStatus;
+  priority: number | null;
+  action_status: ActionStatus;
 };
 
 export type AllocationEngineOutput = AllocationAssetResult[];

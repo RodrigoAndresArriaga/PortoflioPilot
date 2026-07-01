@@ -20,7 +20,11 @@ function makeResult(
     current_weight: 0.25,
     target_weight: 0.55,
     target_value: 11000,
-    reason: "Below target; eligible for monthly buys",
+    reason: "Below drift band; eligible for monthly buys",
+    drift_percent: -30,
+    drift_status: "prioritize",
+    priority: 1,
+    action_status: "prioritize",
     ...partial,
   };
 }
