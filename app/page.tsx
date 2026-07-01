@@ -1,4 +1,7 @@
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   return (
@@ -19,7 +22,9 @@ export default function Home() {
           </p>
         </div>
 
-        <Button>Get started</Button>
+        <Link href="/auth" className={cn(buttonVariants())}>
+          Get started
+        </Link>
       </main>
     </div>
   );
