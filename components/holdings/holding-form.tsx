@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isQuotedMarketAsset } from "@/lib/market-data/asset-utils";
 import type { CreateHoldingInput, HoldingInput } from "@/lib/validation/holdings";
 
 const ASSET_TYPES = ["etf", "stock", "cash", "crypto", "other"] as const;
@@ -25,9 +26,8 @@ export function createEmptyHolding(currency: string): CreateHoldingInput {
     asset_name: null,
     asset_type: "etf",
     currency: currency as CreateHoldingInput["currency"],
-    current_value: 0,
-    cost_basis: null,
     shares: null,
+    cost_basis: null,
     broker: null,
   };
 }
@@ -43,6 +43,8 @@ export function HoldingForm({
   errors,
   idPrefix = "holding",
 }: HoldingFormProps) {
+  const usesMarketQuote = isQuotedMarketAsset(value.asset_type);
+
   function patch(fields: Partial<HoldingInput>) {
     onChange({ ...value, ...fields });
   }
@@ -94,22 +96,48 @@ export function HoldingForm({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-current_value`}>Current value</Label>
-          <Input
-            id={`${idPrefix}-current_value`}
-            type="number"
-            min={0}
-            step="0.01"
-            value={value.current_value}
-            onChange={(event) =>
-              patch({ current_value: event.target.valueAsNumber || 0 })
-            }
-          />
-          {errors?.current_value && (
-            <p className="text-sm text-destructive">{errors.current_value}</p>
-          )}
-        </div>
+        {usesMarketQuote ? (
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-shares`}>Shares</Label>
+            <Input
+              id={`${idPrefix}-shares`}
+              type="number"
+              min={0}
+              step="0.0001"
+              value={value.shares ?? ""}
+              onChange={(event) =>
+                patch({
+                  shares: event.target.value
+                    ? event.target.valueAsNumber
+                    : null,
+                })
+              }
+            />
+            {errors?.shares && (
+              <p className="text-sm text-destructive">{errors.shares}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Market value is fetched automatically from Yahoo Finance.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-current_value`}>Current value</Label>
+            <Input
+              id={`${idPrefix}-current_value`}
+              type="number"
+              min={0}
+              step="0.01"
+              value={value.current_value ?? 0}
+              onChange={(event) =>
+                patch({ current_value: event.target.valueAsNumber || 0 })
+              }
+            />
+            {errors?.current_value && (
+              <p className="text-sm text-destructive">{errors.current_value}</p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor={`${idPrefix}-cost_basis`}>Cost basis (optional)</Label>

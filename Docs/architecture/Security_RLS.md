@@ -151,9 +151,9 @@ SELECT and DELETE policies use `auth.uid() = user_id` only.
 | holdings | `user_id` | B2 | Implemented |
 | target_allocations | `user_id` | B2 | Implemented |
 | watchlist_items | `user_id` | B2 | Implemented |
-| monthly_plans | `user_id` | B3 | Planned |
-| monthly_plan_items | via `monthly_plans.user_id` join or denormalized `user_id` | B3 | Planned |
-| manual_news_inputs | `user_id` | B6 | Planned |
+| monthly_plans | `user_id` | B3 | Implemented |
+| monthly_plan_items | via `monthly_plans.user_id` join or denormalized `user_id` | B3 | Implemented |
+| manual_news_inputs | `user_id` + `portfolio_id` | B5 | Implemented |
 
 For `monthly_plan_items`, either denormalize `user_id` on the row or use a subquery policy checking ownership through `monthly_plans`.
 

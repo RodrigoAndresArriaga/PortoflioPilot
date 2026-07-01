@@ -8,7 +8,7 @@ import {
   detectPortfolioWarnings,
   getBlockedBuySymbols,
 } from "@/lib/engine/concentration";
-import { getHoldings } from "@/lib/server/holdings";
+import { getHoldingsWithFreshPrices } from "@/lib/server/market-data/with-fresh-holdings";
 import {
   getCurrentMonthKey,
   getMonthlyPlan,
@@ -23,7 +23,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const [profile, holdingsResult, targets, watchlistResult, monthlyPlan] =
     await Promise.all([
       requireCurrentUserProfile(),
-      getHoldings(),
+      getHoldingsWithFreshPrices(),
       getTargetAllocations(),
       getWatchlist(),
       getMonthlyPlan(getCurrentMonthKey()),

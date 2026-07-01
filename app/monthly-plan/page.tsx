@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { MonthlyPlanManager } from "@/components/monthly-plan/monthly-plan-manager";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentMonthKey, getMonthlyPlan } from "@/lib/server/monthly-plans";
+import { getMarketContext } from "@/lib/server/market-data/with-fresh-holdings";
 import { requireCurrentUserProfile } from "@/lib/server/profile";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,6 +15,7 @@ export default async function MonthlyPlanPage() {
   }
 
   const month = getCurrentMonthKey();
+  await getMarketContext();
   const plan = await getMonthlyPlan(month);
 
   const supabase = await createClient();

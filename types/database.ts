@@ -51,9 +51,22 @@ export type Holding = {
   currency: string;
   shares: number | null;
   current_value: number;
+  last_price: number | null;
+  last_price_at: string | null;
+  price_source: string | null;
   cost_basis: number | null;
   broker: string | null;
   created_at: string;
+  updated_at: string;
+};
+
+export type SymbolMarketCache = {
+  symbol: string;
+  latest_price: number | null;
+  currency: string;
+  quoted_at: string | null;
+  history_json: unknown;
+  history_fetched_at: string | null;
   updated_at: string;
 };
 
@@ -138,6 +151,43 @@ export type MonthlyPlanItem = {
 export type MonthlyPlanWithItems = {
   plan: MonthlyPlan;
   items: MonthlyPlanItem[];
+};
+
+export type NewsReportType =
+  | "daily_urgent_scan"
+  | "weekly_market_review"
+  | "monthly_allocation_review";
+
+export type ManualNewsInput = {
+  id: string;
+  user_id: string;
+  portfolio_id: string;
+  parent_id: string | null;
+  is_report_header: boolean;
+  report_type: NewsReportType;
+  report_period: string;
+  payload: unknown | null;
+  symbol: string | null;
+  asset_type: "etf" | "stock" | null;
+  news_score: number | null;
+  news_direction: "positive" | "neutral" | "negative" | "mixed" | null;
+  news_confidence: number | null;
+  ai_bias: "add" | "hold" | "watch" | "reduce" | "avoid" | null;
+  impact_horizon: "short_term" | "medium_term" | "long_term" | null;
+  event_type: string | null;
+  risk_flags: string[] | null;
+  one_sentence_reason: string | null;
+  source_count: number | null;
+  reason: string | null;
+  risk_level: "low" | "medium" | "high" | null;
+  suggested_frontend_status:
+    | "normal"
+    | "watch"
+    | "reduce_new_buys"
+    | "manual_review"
+    | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type ProfileInsert = Omit<
@@ -255,6 +305,19 @@ export type MonthlyPlanItemUpdate = Partial<
   Omit<MonthlyPlanItem, "id" | "monthly_plan_id" | "created_at">
 >;
 
+export type ManualNewsInputInsert = Omit<
+  ManualNewsInput,
+  "id" | "created_at" | "updated_at"
+> & {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ManualNewsInputUpdate = Partial<
+  Omit<ManualNewsInput, "id" | "user_id" | "created_at" | "updated_at">
+>;
+
 export type Database = {
   public: {
     Tables: {
@@ -302,6 +365,16 @@ export type Database = {
         Row: MonthlyPlanItem;
         Insert: MonthlyPlanItemInsert;
         Update: MonthlyPlanItemUpdate;
+      };
+      symbol_market_cache: {
+        Row: SymbolMarketCache;
+        Insert: Omit<SymbolMarketCache, "updated_at"> & { updated_at?: string };
+        Update: Partial<Omit<SymbolMarketCache, "symbol">>;
+      };
+      manual_news_inputs: {
+        Row: ManualNewsInput;
+        Insert: ManualNewsInputInsert;
+        Update: ManualNewsInputUpdate;
       };
     };
   };

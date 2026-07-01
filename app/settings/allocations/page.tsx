@@ -1,12 +1,12 @@
 import { AllocationsEditor } from "@/components/allocations/allocations-editor";
 import { snapshotToAllocationForm } from "@/components/allocations/allocation-form-utils";
-import { getHoldings } from "@/lib/server/holdings";
+import { getHoldingsWithFreshPrices } from "@/lib/server/market-data/with-fresh-holdings";
 import { requireCurrentUserProfile } from "@/lib/server/profile";
 import { getTargetAllocations } from "@/lib/server/targets";
 import type { HoldingInput } from "@/lib/validation/holdings";
 
 function holdingToInput(
-  holding: NonNullable<Awaited<ReturnType<typeof getHoldings>>>[number],
+  holding: Awaited<ReturnType<typeof getHoldingsWithFreshPrices>>[number],
 ): HoldingInput {
   return {
     symbol: holding.symbol,
@@ -24,10 +24,10 @@ export default async function AllocationsPage() {
   const profile = await requireCurrentUserProfile();
   const [snapshot, holdingsRaw] = await Promise.all([
     getTargetAllocations(),
-    getHoldings(),
+    getHoldingsWithFreshPrices(),
   ]);
 
-  const holdings = (holdingsRaw ?? []).map(holdingToInput);
+  const holdings = holdingsRaw.map(holdingToInput);
   const initialValue = snapshotToAllocationForm(snapshot, profile.risk_profile);
 
   return (

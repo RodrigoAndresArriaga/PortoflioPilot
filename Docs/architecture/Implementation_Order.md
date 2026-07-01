@@ -11,7 +11,7 @@ Milestone-ordered build plan for PortfolioPilot. Each milestone has a clear entr
 | **B2** | Portfolio input (holdings, allocation, watchlist, settings) | Phase 2 | Planned |
 | **B3** | Monthly allocation engine | Phase 3 | Planned |
 | **B4** | Visual dashboard (Recharts) | Phase 4 | Planned |
-| **B4.5** | Market data & auto valuation (Yahoo Finance) | Phase 4 | Planned |
+| **B4.5** | Market data & auto valuation (Yahoo Finance) | Phase 4 | Done |
 | **B5** | Risk and technical algorithms | Phase 5 | Planned |
 | **B6** | Manual ChatGPT news layer | Phase 6 | Planned |
 | **B7** | Email alerts (Resend) | Phase 7 | Planned |
@@ -120,6 +120,8 @@ Milestone-ordered build plan for PortfolioPilot. Each milestone has a clear entr
 - Non-cash holdings auto-valued from live quotes
 - Portfolio total and allocation weights update without manual price edits
 - Monthly plan generation uses refreshed `current_value`
+- Technical inputs derived from Yahoo price history; `computeAssetScores()` callable from server snapshot
+- B5 can consume same `MarketSnapshot` without a new provider
 - Stale-quote fallback when provider is unavailable
 - Manual value editor removed or read-only with computed display
 

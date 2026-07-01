@@ -2,27 +2,53 @@
 
 import { useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isQuotedMarketAsset } from "@/lib/market-data/asset-utils";
+import { isQuoteStale } from "@/lib/market-data/quote-utils";
 import { updateHolding } from "@/lib/server/holdings";
+import type { AssetType } from "@/types/database";
 
-type HoldingValueEditorProps = {
+type HoldingValueDisplayProps = {
   holdingId: string;
+  assetType: AssetType;
   currentValue: number;
   currency: string;
+  shares: number | null;
+  lastPrice: number | null;
+  lastPriceAt: string | null;
   onUpdated: () => void;
 };
 
-export function HoldingValueEditor({
+function formatAsOf(timestamp: string | null): string | null {
+  if (!timestamp) {
+    return null;
+  }
+  return new Date(timestamp).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+export function HoldingValueDisplay({
   holdingId,
+  assetType,
   currentValue,
   currency,
+  shares,
+  lastPrice,
+  lastPriceAt,
   onUpdated,
-}: HoldingValueEditorProps) {
+}: HoldingValueDisplayProps) {
+  const usesMarketQuote = isQuotedMarketAsset(assetType);
   const [value, setValue] = useState(currentValue);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const stale = usesMarketQuote && isQuoteStale(lastPriceAt);
+  const asOf = formatAsOf(lastPriceAt);
 
   async function handleSave() {
     setIsSaving(true);
@@ -48,6 +74,39 @@ export function HoldingValueEditor({
     setValue(currentValue);
     setError(null);
     setIsEditing(false);
+  }
+
+  if (usesMarketQuote) {
+    return (
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium">
+            {currentValue.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}{" "}
+            {currency}
+          </span>
+          {stale && <Badge variant="outline">Stale quote</Badge>}
+        </div>
+        {lastPrice != null && shares != null && shares > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {shares.toLocaleString(undefined, {
+              maximumFractionDigits: 4,
+            })}{" "}
+            shares ×{" "}
+            {lastPrice.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}{" "}
+            {currency}
+          </p>
+        )}
+        {asOf && (
+          <p className="text-xs text-muted-foreground">As of {asOf}</p>
+        )}
+      </div>
+    );
   }
 
   if (!isEditing) {

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { parseZodError, requireAuthUser } from "@/lib/server/auth";
-import { getHoldings } from "@/lib/server/holdings";
+import { getHoldingsWithFreshPrices } from "@/lib/server/market-data/with-fresh-holdings";
 import {
   buildMonthlyPlanPayload,
   getCurrentMonthKey,
@@ -208,7 +208,7 @@ export async function generateMonthlyPlan(
   const [portfolio, profile, holdings, targets] = await Promise.all([
     getUserPortfolio(auth.user.id),
     getUserProfile(),
-    getHoldings(),
+    getHoldingsWithFreshPrices(),
     getTargetAllocations(),
   ]);
 

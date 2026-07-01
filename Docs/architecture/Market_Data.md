@@ -1,57 +1,82 @@
 # Market Data & Auto Valuation
 
-PortfolioPilot must keep holdings valued from **live market prices**, not user-entered guesses. Manual `current_value` entry is an interim B2 workaround; automatic valuation is a required product behavior.
+PortfolioPilot keeps holdings valued from **server-fetched market prices**, not user-entered guesses. Manual `current_value` entry is only for cash and non-quoted assets.
 
 ---
 
 ## Product Rule
 
 1. **User enters:** symbol, shares (or units), cost basis, asset type, broker, currency.
-2. **System fetches:** latest market price per symbol from a free quote provider.
-3. **System computes:** `current_value = shares × latest_price` (converted to portfolio base currency when needed).
-4. **User never maintains** `current_value` by hand on an ongoing basis.
+2. **System fetches:** latest market price per symbol from Yahoo Finance (server-side).
+3. **System computes:** `current_value = shares × latest_price` (in holding currency).
+4. **User never maintains** `current_value` by hand for ETFs and stocks.
 
-Cash and non-market assets (brokerage cash, money market) stay user-defined or fixed at par.
+Cash and non-market assets (brokerage cash, crypto in v1) stay user-defined.
 
----
-
-## Primary Provider (v1)
-
-**Yahoo Finance** (free, no API key) via a server-side quote fetcher.
-
-Implementation options (pick one in code):
-
-- Unofficial Yahoo chart/quote endpoints (server-only; no browser calls)
-- A thin wrapper library that reads Yahoo quotes server-side
-
-Requirements:
-
-- Server-side only (Next.js server actions / route handlers / cron). Do not call Yahoo from the browser.
-- Cache quotes (see below) to respect rate limits and keep pages fast.
-- Graceful fallback: show last cached price + stale badge if fetch fails; do not block the app.
-
-Future (B8+): optional paid provider (Polygon, Alpha Vantage, etc.) behind the same interface.
+**“Realtime” in B4.5** means fresh quotes on each refresh cycle (15-minute TTL cache), not WebSocket tick streams.
 
 ---
 
-## Quote Service Boundary
+## Architecture
 
 ```
-lib/server/market-data/
-  quote-provider.ts      # interface
-  yahoo-quote-provider.ts
-  refresh-holdings.ts    # recompute all holdings for a user/portfolio
+Yahoo chart API (2y daily + latest price)
+  → symbol_market_cache (shared per symbol)
+  → refreshHoldingsValuations
+  → holdings.last_price / current_value
+  → indicators → buildTechnicalInputs → computeAssetScores
 ```
 
-Public server API (planned):
+Pages and engines never call Yahoo directly. They use `getPortfolioMarketSnapshot()` / `getHoldingsWithFreshPrices()`.
+
+---
+
+## Module Layout
+
+| Path | Role |
+|------|------|
+| `lib/server/market-data/yahoo-provider.ts` | Yahoo chart API fetch |
+| `lib/server/market-data/cache.ts` | `symbol_market_cache` read/write, TTL |
+| `lib/server/market-data/refresh-holdings.ts` | Recompute holding values |
+| `lib/server/market-data/refresh-portfolio-market.ts` | Orchestrator + technical scores |
+| `lib/market-data/indicators.ts` | Pure indicator math |
+| `lib/market-data/build-technical-inputs.ts` | Price history → engine inputs |
+| `lib/market-data/build-asset-scores.ts` | Live inputs → `computeAssetScores()` |
+
+Public server API:
 
 | Function | Purpose |
 |----------|---------|
-| `getQuote(symbol)` | Latest price + currency + as-of timestamp |
-| `refreshPortfolioValuations(userId)` | Update all non-cash holdings |
-| `refreshHoldingValuation(holdingId)` | Single-symbol refresh |
+| `getOrFetchHistory(symbol)` | Cached 2y daily bars + latest quote |
+| `refreshPortfolioMarket(holdings)` | Refresh quotes, revalue holdings, build scores |
+| `getPortfolioMarketSnapshot()` | Authenticated refresh + `MarketSnapshot` |
+| `getHoldingsWithFreshPrices()` | Holdings after stale refresh |
+| `getTechnicalScoresForSymbols(symbols[])` | B5 hook for score-only access |
+| `refreshPortfolioPrices()` | Server action for manual refresh button |
 
-All consumers use **stored** `holdings.current_value` after refresh — they do not call Yahoo directly.
+---
+
+## Technical Score Data Flow
+
+1. Fetch ~2 years of daily closes from Yahoo (`range=2y&interval=1d`).
+2. Compute indicators (see mapping below).
+3. Map to `MomentumInputs`, `TrendInputs`, `VolatilityInputs` in `lib/engine/scores.ts`.
+4. Call existing `computeAssetScores()` in `lib/engine/final-score.ts`.
+5. Stock quality/value/growth factors default to **50** until B5 fundamentals.
+6. B5 will consume the same `MarketSnapshot` for position sizing — not wired in B4.5.
+
+### Indicator mapping (Algorithm Spec §6–8)
+
+| Engine input | Source |
+|--------------|--------|
+| `return_3m/6m/12m` | Percent return over ~63/126/252 trading days → 0–100 score |
+| `price_above_200dma` | Latest close vs SMA-200 |
+| `price_above_50dma` | Latest close vs SMA-50 |
+| `ma50_above_200dma` | SMA-50 vs SMA-200 |
+| `volatility_90d` | 90d annualized vol → inverted safety score |
+| `max_drawdown_1y` | Peak-to-trough over last ~252 sessions |
+| `beta` | vs SPY benchmark history |
+| `downside_volatility` | Downside deviation over 90d |
 
 ---
 
@@ -60,71 +85,77 @@ All consumers use **stored** `holdings.current_value` after refresh — they do 
 | Trigger | When |
 |---------|------|
 | **On load** | `/holdings`, `/dashboard`, `/monthly-plan`, `/settings/allocations` if cache older than TTL |
-| **Scheduled** | Daily job after US market close (and optional pre-open refresh) |
-| **On demand** | "Refresh prices" control on holdings/dashboard (optional UX) |
-| **After CRUD** | User adds/edits holding symbol or shares → fetch quote for that symbol |
+| **Scheduled** | `GET /api/cron/refresh-market-data` daily after US close (`Authorization: Bearer $CRON_SECRET`) |
+| **On demand** | “Refresh prices” on `/holdings` |
+| **After CRUD** | User adds/edits symbol or shares → single-holding refresh |
 
-Suggested cache TTL: **15 minutes** during market hours, **24 hours** after close (tunable).
-
----
-
-## Pages & Features That Depend on Live Prices
-
-These must show auto-updated values — never require manual price entry in steady state:
-
-| Surface | Uses price for |
-|---------|----------------|
-| `/holdings` | Position value, portfolio total, allocation weights |
-| `/dashboard` | Portfolio value card, allocation donut, drift, buy plan context |
-| `/monthly-plan` | E1 engine input (`current_value` per symbol) |
-| `/settings/allocations` | Current vs target weight display |
-| `/onboarding` (holdings step) | Initial portfolio snapshot after symbol + shares |
-| **P&L / profits** (future) | Gain/loss vs `cost_basis`, return % |
-| **B5 technical scores** (future) | Price history, moving averages, momentum |
-| **Watchlist** (future signals) | Last price, daily change |
+Cache TTL: **15 minutes** quotes, **24 hours** history.
 
 ---
 
-## Schema Notes (planned migration)
+## Schema (`005_market_data.sql`)
 
-Extend `holdings` (or add `holding_quotes` cache table):
+**`holdings` extensions:**
 
 | Column | Purpose |
 |--------|---------|
 | `last_price` | Fetched quote in holding currency |
 | `last_price_at` | Quote timestamp |
 | `price_source` | e.g. `yahoo` |
-| `current_value` | Denormalized `shares × last_price` (still the weight input for the engine) |
+| `current_value` | Denormalized `shares × last_price` (engine weight input) |
 
-`cost_basis` remains user-entered (or imported) for P&L; it is not fetched from Yahoo.
+**`symbol_market_cache` (shared, not per user):**
+
+| Column | Purpose |
+|--------|---------|
+| `symbol` | Primary key |
+| `latest_price`, `currency`, `quoted_at` | Latest quote |
+| `history_json` | ~2y daily OHLCV bars (close only in v1) |
+| `history_fetched_at` | History cache timestamp |
+
+RLS: authenticated read; upsert via server/cron (service role for batch jobs).
+
+---
+
+## Pages & Features That Depend on Live Prices
+
+| Surface | Uses price for |
+|---------|----------------|
+| `/holdings` | Position value, portfolio total, stale badge |
+| `/dashboard` | Portfolio value card, allocation donut, drift |
+| `/monthly-plan` | E1 engine input (`current_value` per symbol) |
+| `/settings/allocations` | Current vs target weight display |
+| `/onboarding` (holdings step) | Symbol + shares → quote on complete |
+| **B5 position sizing** (future) | Technical scores from same snapshot |
 
 ---
 
 ## UX Guidelines
 
-- Holdings form: **symbol + shares** required for market assets; hide or read-only **current value** (show computed value + "as of" time).
-- Show **stale price warning** if `last_price_at` exceeds TTL.
-- Copy must distinguish **manual trading** (user places orders) from **automatic pricing** (system updates valuations).
+- Holdings form: **symbol + shares** for ETF/stock; read-only computed value + “as of” time.
+- Show **stale price warning** if `last_price_at` exceeds 15-minute TTL.
+- Distinguish **manual trading** (user places orders) from **automatic pricing** (system updates valuations).
 
 ---
 
-## Non-Goals
+## Non-Goals (B4.5)
 
-- Real-time streaming quotes (WebSocket tick data)
-- Intraday trading or sub-minute refresh
-- Crypto exchange APIs in v1 (manual or fixed value until B8+)
-- Automatic order execution
+- WebSocket / sub-minute tick data
+- Stock fundamental factors from Yahoo (neutral 50 until B5)
+- Applying technical scores to monthly buy amounts (B5)
+- Paid quote providers (B8+)
+- Crypto exchange APIs
 
 ---
 
-## Milestone
+## Milestone Exit Criteria
 
-See **B4.5 — Market Data & Auto Valuation** in [Implementation_Order.md](./Implementation_Order.md).
+- [x] Yahoo provider fetches latest price + 2y daily history server-side
+- [x] Holdings `current_value` auto-computed; manual price editor removed for etf/stock
+- [x] Listed pages refresh stale quotes on load
+- [x] Technical engine receives price-derived momentum/trend/volatility inputs
+- [x] `getPortfolioMarketSnapshot()` returns holdings + technical scores from same refresh
+- [x] Stale/failure fallback uses last cached quote with UI badge
+- [x] Tests cover indicators + market-to-scores pipeline
 
-Exit criteria:
-
-- [ ] Yahoo (or equivalent free) quote fetcher runs server-side
-- [ ] `current_value` recomputed from shares × price for all non-cash holdings
-- [ ] Holdings, dashboard, and monthly plan reflect refreshed values without manual edits
-- [ ] Scheduled + on-load refresh with caching
-- [ ] Manual `current_value` editor removed or read-only
+See **B4.5** in [Implementation_Order.md](./Implementation_Order.md).

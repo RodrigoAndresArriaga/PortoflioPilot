@@ -1,8 +1,9 @@
 import { z } from "zod";
 
+import { isQuotedMarketAsset } from "@/lib/market-data/asset-utils";
 import { assetTypeSchema, baseCurrencySchema } from "@/lib/validation/common";
 
-export const holdingInputSchema = z.object({
+const holdingBaseSchema = z.object({
   symbol: z
     .string()
     .trim()
@@ -13,7 +14,8 @@ export const holdingInputSchema = z.object({
   currency: baseCurrencySchema,
   current_value: z.coerce
     .number()
-    .min(0, "Current value must be zero or greater"),
+    .min(0, "Current value must be zero or greater")
+    .optional(),
   cost_basis: z.coerce
     .number()
     .min(0, "Cost basis must be zero or greater")
@@ -21,6 +23,37 @@ export const holdingInputSchema = z.object({
     .nullable(),
   shares: z.coerce.number().min(0).optional().nullable(),
   broker: z.string().trim().max(100).optional().nullable(),
+});
+
+function refineHoldingValueRules(
+  data: z.infer<typeof holdingBaseSchema>,
+  ctx: z.RefinementCtx,
+  prefix = "",
+) {
+  const path = (field: string) => (prefix ? `${prefix}.${field}` : field);
+
+  if (isQuotedMarketAsset(data.asset_type)) {
+    if (!data.shares || data.shares <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Shares are required for ETF and stock holdings",
+        path: [path("shares")],
+      });
+    }
+    return;
+  }
+
+  if (data.current_value === undefined) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Current value is required for this asset type",
+      path: [path("current_value")],
+    });
+  }
+}
+
+export const holdingInputSchema = holdingBaseSchema.superRefine((data, ctx) => {
+  refineHoldingValueRules(data, ctx);
 });
 
 export const createHoldingSchema = holdingInputSchema;

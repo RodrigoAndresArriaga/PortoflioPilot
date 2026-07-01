@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { Holding } from "@/types/database";
 
 import { HoldingForm } from "./holding-form";
-import { HoldingValueEditor } from "./holding-value-editor";
+import { HoldingValueDisplay } from "./holding-value-display";
 import type { HoldingInput } from "@/lib/validation/holdings";
 
 type HoldingsListProps = {
@@ -114,12 +114,16 @@ export function HoldingsList({
                   {holding.asset_type}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Current value: </span>
-                  <HoldingValueEditor
-                    key={`${holding.id}-${holding.current_value}`}
+                  <span className="text-muted-foreground">Value: </span>
+                  <HoldingValueDisplay
+                    key={`${holding.id}-${holding.current_value}-${holding.last_price_at}`}
                     holdingId={holding.id}
+                    assetType={holding.asset_type}
                     currentValue={holding.current_value}
                     currency={holding.currency}
+                    shares={holding.shares}
+                    lastPrice={holding.last_price}
+                    lastPriceAt={holding.last_price_at}
                     onUpdated={onValueUpdated}
                   />
                 </div>

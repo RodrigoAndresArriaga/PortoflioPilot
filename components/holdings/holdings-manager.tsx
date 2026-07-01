@@ -11,6 +11,7 @@ import {
   deleteHolding,
   updateHolding,
 } from "@/lib/server/holdings";
+import { refreshPortfolioPrices } from "@/lib/server/market-data/actions";
 import { formatZodErrors } from "@/lib/validation/onboarding";
 import {
   createHoldingSchema,
@@ -47,6 +48,7 @@ export function HoldingsManager({
   const [isAdding, setIsAdding] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const totalValue = initialHoldings.reduce(
     (sum, holding) => sum + holding.current_value,
@@ -55,6 +57,20 @@ export function HoldingsManager({
 
   function refresh() {
     router.refresh();
+  }
+
+  async function handleRefreshPrices() {
+    setFormError(null);
+    setIsRefreshing(true);
+    const result = await refreshPortfolioPrices();
+    setIsRefreshing(false);
+
+    if (!result.ok) {
+      setFormError(result.error);
+      return;
+    }
+
+    refresh();
   }
 
   async function handleAdd() {
@@ -161,6 +177,15 @@ export function HoldingsManager({
           {initialHoldings.length} holding
           {initialHoldings.length === 1 ? "" : "s"}
         </Badge>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleRefreshPrices}
+          disabled={isRefreshing || initialHoldings.length === 0}
+        >
+          {isRefreshing ? "Refreshing..." : "Refresh prices"}
+        </Button>
       </div>
 
       <HoldingsList

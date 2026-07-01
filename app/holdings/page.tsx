@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { HoldingsManager } from "@/components/holdings/holdings-manager";
 import { AppShell } from "@/components/layout/app-shell";
-import { getHoldings } from "@/lib/server/holdings";
+import { getHoldingsWithFreshPrices } from "@/lib/server/market-data/with-fresh-holdings";
 import { requireCurrentUserProfile } from "@/lib/server/profile";
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,7 +13,7 @@ export default async function HoldingsPage() {
     redirect("/onboarding");
   }
 
-  const holdings = (await getHoldings()) ?? [];
+  const holdings = await getHoldingsWithFreshPrices();
 
   const supabase = await createClient();
   const {

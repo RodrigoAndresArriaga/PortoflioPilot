@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 
 import { inferTargetAssetsFromHoldings } from "@/lib/allocation/infer-bucket-assignments";
+import { isQuotedMarketAsset } from "@/lib/market-data/asset-utils";
+import { refreshHoldingsValuations } from "@/lib/server/market-data/refresh-holdings";
 import { createClient } from "@/lib/supabase/server";
 import { onboardingPayloadSchema } from "@/lib/validation/onboarding";
 
@@ -114,7 +116,9 @@ export async function completeOnboarding(
     asset_name: holding.asset_name?.trim() || null,
     asset_type: holding.asset_type,
     currency: holding.currency,
-    current_value: holding.current_value,
+    current_value: isQuotedMarketAsset(holding.asset_type)
+      ? 0
+      : (holding.current_value ?? 0),
     cost_basis: holding.cost_basis ?? null,
     shares: holding.shares ?? null,
     broker: holding.broker?.trim() || null,
@@ -126,6 +130,19 @@ export async function completeOnboarding(
 
   if (holdingsError) {
     return { ok: false, error: holdingsError.message };
+  }
+
+  const { data: insertedHoldings } = await supabase
+    .from("holdings")
+    .select("*")
+    .eq("portfolio_id", portfolio.id);
+
+  if (insertedHoldings && insertedHoldings.length > 0) {
+    try {
+      await refreshHoldingsValuations(supabase, insertedHoldings, true);
+    } catch {
+      // onboarding continues with zero values until manual refresh
+    }
   }
 
   const enabledBuckets = payload.target_buckets.filter((bucket) => {

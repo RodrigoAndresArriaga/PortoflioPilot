@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isQuotedMarketAsset } from "@/lib/market-data/asset-utils";
 import type { HoldingInput } from "@/lib/validation/onboarding";
 
 type HoldingsStepProps = {
@@ -21,9 +22,8 @@ function createEmptyHolding(currency: string): HoldingInput {
     asset_name: null,
     asset_type: "etf",
     currency: currency as HoldingInput["currency"],
-    current_value: 0,
-    cost_basis: null,
     shares: null,
+    cost_basis: null,
     broker: null,
   };
 }
@@ -57,9 +57,8 @@ export function HoldingsStep({
         asset_name: "Vanguard S&P 500 ETF",
         asset_type: "etf",
         currency: baseCurrency as HoldingInput["currency"],
-        current_value: 5000,
+        shares: 10,
         cost_basis: 4800,
-        shares: null,
         broker: null,
       },
       {
@@ -67,9 +66,8 @@ export function HoldingsStep({
         asset_name: "Invesco QQQ Trust",
         asset_type: "etf",
         currency: baseCurrency as HoldingInput["currency"],
-        current_value: 2000,
+        shares: 5,
         cost_basis: 1900,
-        shares: null,
         broker: null,
       },
       {
@@ -77,9 +75,8 @@ export function HoldingsStep({
         asset_name: "NVIDIA Corporation",
         asset_type: "stock",
         currency: baseCurrency as HoldingInput["currency"],
-        current_value: 1500,
+        shares: 8,
         cost_basis: 1300,
-        shares: null,
         broker: null,
       },
     ]);
@@ -90,7 +87,8 @@ export function HoldingsStep({
       <div className="space-y-2">
         <h3 className="text-lg font-semibold">Current holdings</h3>
         <p className="text-sm text-muted-foreground">
-          Enter what you already own. Weights use current market value.
+          Enter symbols and shares. ETF and stock values are fetched from Yahoo
+          Finance on save.
         </p>
       </div>
 
@@ -115,118 +113,142 @@ export function HoldingsStep({
           </p>
         )}
 
-        {value.map((holding, index) => (
-          <div
-            key={index}
-            className="space-y-3 rounded-lg border border-input p-4"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Holding {index + 1}</p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeHolding(index)}
-              >
-                Remove
-              </Button>
-            </div>
+        {value.map((holding, index) => {
+          const usesMarketQuote = isQuotedMarketAsset(holding.asset_type);
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor={`symbol-${index}`}>Symbol</Label>
-                <Input
-                  id={`symbol-${index}`}
-                  value={holding.symbol}
-                  onChange={(event) =>
-                    updateHolding(index, { symbol: event.target.value })
-                  }
-                  placeholder="VOO"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor={`asset_type-${index}`}>Asset type</Label>
-                <select
-                  id={`asset_type-${index}`}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                  value={holding.asset_type}
-                  onChange={(event) =>
-                    updateHolding(index, {
-                      asset_type: event.target.value as HoldingInput["asset_type"],
-                    })
-                  }
+          return (
+            <div
+              key={index}
+              className="space-y-3 rounded-lg border border-input p-4"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Holding {index + 1}</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeHolding(index)}
                 >
-                  {ASSET_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                  Remove
+                </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor={`asset_name-${index}`}>Asset name (optional)</Label>
-                <Input
-                  id={`asset_name-${index}`}
-                  value={holding.asset_name ?? ""}
-                  onChange={(event) =>
-                    updateHolding(index, {
-                      asset_name: event.target.value || null,
-                    })
-                  }
-                />
-              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`symbol-${index}`}>Symbol</Label>
+                  <Input
+                    id={`symbol-${index}`}
+                    value={holding.symbol}
+                    onChange={(event) =>
+                      updateHolding(index, { symbol: event.target.value })
+                    }
+                    placeholder="VOO"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor={`current_value-${index}`}>Current value</Label>
-                <Input
-                  id={`current_value-${index}`}
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={holding.current_value}
-                  onChange={(event) =>
-                    updateHolding(index, {
-                      current_value: event.target.valueAsNumber || 0,
-                    })
-                  }
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`asset_type-${index}`}>Asset type</Label>
+                  <select
+                    id={`asset_type-${index}`}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    value={holding.asset_type}
+                    onChange={(event) =>
+                      updateHolding(index, {
+                        asset_type: event.target.value as HoldingInput["asset_type"],
+                      })
+                    }
+                  >
+                    {ASSET_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor={`cost_basis-${index}`}>Cost basis (optional)</Label>
-                <Input
-                  id={`cost_basis-${index}`}
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={holding.cost_basis ?? ""}
-                  onChange={(event) =>
-                    updateHolding(index, {
-                      cost_basis: event.target.value
-                        ? event.target.valueAsNumber
-                        : null,
-                    })
-                  }
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`asset_name-${index}`}>Asset name (optional)</Label>
+                  <Input
+                    id={`asset_name-${index}`}
+                    value={holding.asset_name ?? ""}
+                    onChange={(event) =>
+                      updateHolding(index, {
+                        asset_name: event.target.value || null,
+                      })
+                    }
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor={`broker-${index}`}>Broker (optional)</Label>
-                <Input
-                  id={`broker-${index}`}
-                  value={holding.broker ?? ""}
-                  onChange={(event) =>
-                    updateHolding(index, {
-                      broker: event.target.value || null,
-                    })
-                  }
-                />
+                {usesMarketQuote ? (
+                  <div className="space-y-2">
+                    <Label htmlFor={`shares-${index}`}>Shares</Label>
+                    <Input
+                      id={`shares-${index}`}
+                      type="number"
+                      min={0}
+                      step="0.0001"
+                      value={holding.shares ?? ""}
+                      onChange={(event) =>
+                        updateHolding(index, {
+                          shares: event.target.value
+                            ? event.target.valueAsNumber
+                            : null,
+                        })
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor={`current_value-${index}`}>Current value</Label>
+                    <Input
+                      id={`current_value-${index}`}
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={holding.current_value ?? 0}
+                      onChange={(event) =>
+                        updateHolding(index, {
+                          current_value: event.target.valueAsNumber || 0,
+                        })
+                      }
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor={`cost_basis-${index}`}>Cost basis (optional)</Label>
+                  <Input
+                    id={`cost_basis-${index}`}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={holding.cost_basis ?? ""}
+                    onChange={(event) =>
+                      updateHolding(index, {
+                        cost_basis: event.target.value
+                          ? event.target.valueAsNumber
+                          : null,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`broker-${index}`}>Broker (optional)</Label>
+                  <Input
+                    id={`broker-${index}`}
+                    value={holding.broker ?? ""}
+                    onChange={(event) =>
+                      updateHolding(index, {
+                        broker: event.target.value || null,
+                      })
+                    }
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {errors?.holdings && (

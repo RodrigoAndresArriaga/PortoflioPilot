@@ -14,6 +14,8 @@ import { baseCurrencySchema } from "@/lib/validation/common";
 import type { SaveMonthlyPlanInput } from "@/lib/validation/monthly-plan";
 import type { Holding, Profile } from "@/types/database";
 
+// B5 can consume getPortfolioMarketSnapshot() technical scores here for position sizing.
+
 // current month key in UTC
 export function getCurrentMonthKey(): string {
   const now = new Date();

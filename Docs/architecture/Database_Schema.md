@@ -176,23 +176,46 @@ RLS on items is scoped through `monthly_plans.user_id` ownership.
 
 ## manual_news_inputs
 
-Structured ChatGPT report data entered manually by the user.
+Structured ChatGPT report data entered manually by the user. Uses a **hybrid header/child model** in a single table.
+
+```
+Report header row (is_report_header = true)
+  ├── payload jsonb — full validated ChatGPT JSON
+  └── child rows (parent_id → header)
+        ├── daily/monthly: symbol + news_score, news_direction, ...
+        └── weekly: symbol + reason, risk_level, suggested_frontend_status
+```
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | uuid PK | |
 | `user_id` | uuid FK | references `auth.users(id)` |
-| `symbol` | text | |
-| `report_date` | date | |
-| `report_type` | text | daily_urgent_scan / weekly_review / monthly_allocation_review |
-| `news_score` | numeric | |
+| `portfolio_id` | uuid FK | references `portfolios(id)` |
+| `parent_id` | uuid FK nullable | self-reference; null on header rows |
+| `is_report_header` | boolean | `true` = full report JSON in `payload` |
+| `report_type` | text | `daily_urgent_scan` / `weekly_market_review` / `monthly_allocation_review` |
+| `report_period` | text | `YYYY-MM-DD` (daily/weekly) or `YYYY-MM` (monthly) |
+| `payload` | jsonb | NOT NULL on header rows only |
+| `symbol` | text | child rows only |
+| `asset_type` | text | `etf` / `stock` (child rows) |
+| `news_score` | numeric(5,2) | 0–100 |
 | `news_direction` | text | positive / neutral / negative / mixed |
-| `news_confidence` | numeric | 0–100 |
-| `ai_bias` | text | hold / watch / reduce / avoid |
+| `news_confidence` | numeric(5,2) | 0–100 |
+| `ai_bias` | text | add / hold / watch / reduce / avoid |
 | `impact_horizon` | text | short_term / medium_term / long_term |
 | `event_type` | text | |
 | `risk_flags` | text[] | |
-| `notes` | text | |
+| `one_sentence_reason` | text | |
+| `source_count` | int | |
+| `reason` | text | weekly child rows |
+| `risk_level` | text | low / medium / high |
+| `suggested_frontend_status` | text | normal / watch / reduce_new_buys / manual_review |
+
+Constraints: unique header per `(portfolio_id, report_type, report_period)`.
+
+Validation: [`lib/validation/news-input.ts`](../../lib/validation/news-input.ts). Server CRUD: [`lib/server/news-inputs.ts`](../../lib/server/news-inputs.ts).
+
+RLS: authenticated users CRUD own rows; portfolio ownership enforced on insert/update.
 
 ---
 
@@ -243,9 +266,10 @@ TypeScript types: `types/database.ts`
 | profiles | B1 | Implemented — `001_profiles.sql` |
 | portfolios | B2 | Implemented — `002_portfolio_schema.sql` |
 | holdings | B2 | Implemented — `002_portfolio_schema.sql` |
-| holdings quote columns | B4.5 | Planned — see [Market_Data.md](./Market_Data.md) |
+| holdings quote columns | B4.5 | Implemented — `005_market_data.sql` |
 | target_allocations | B2 | Implemented — `002_portfolio_schema.sql` |
 | watchlist_items | B2 | Implemented — `002_portfolio_schema.sql` |
+| symbol_market_cache | B4.5 | Implemented — `005_market_data.sql` |
 | monthly_plans | B4 | Implemented — `004_monthly_plans.sql` |
 | monthly_plan_items | B4 | Implemented — `004_monthly_plans.sql` |
-| manual_news_inputs | B6 | Spec only |
+| manual_news_inputs | B5 | Implemented — `006_manual_news_inputs.sql` |
