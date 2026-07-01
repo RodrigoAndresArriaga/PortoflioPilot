@@ -77,7 +77,16 @@ export function InstructionsContent({
           steps={[
             "ChatGPT runs your daily scheduled task after the market closes.",
             "If urgent_news is false, do nothing.",
-            "If urgent news exists, review the JSON and decide whether to record it in PortfolioPilot (news input page coming in a future update).",
+            <>
+              If urgent news exists, review the JSON and paste it on the{" "}
+              <Link
+                href="/news-input"
+                className="font-medium underline underline-offset-4"
+              >
+                news input page
+              </Link>
+              .
+            </>,
             "No trades happen automatically.",
           ]}
           outputNote="Daily scans should return a minimal no-action JSON payload when nothing urgent occurred."
@@ -102,7 +111,16 @@ export function InstructionsContent({
           steps={[
             "ChatGPT produces a weekly_market_review JSON report.",
             "Review market_regime, overall_risk_level, and symbols_to_watch.",
-            "Input only meaningful weekly risk changes when the news input page is available.",
+            <>
+              Input meaningful weekly risk changes on the{" "}
+              <Link
+                href="/news-input"
+                className="font-medium underline underline-offset-4"
+              >
+                news input page
+              </Link>
+              .
+            </>,
             "Use the context to decide if next week should feel normal, cautious, or defensive.",
           ]}
           outputNote="Weekly output provides risk context only — not trade instructions."
@@ -127,10 +145,19 @@ export function InstructionsContent({
           steps={[
             "Update current holdings in PortfolioPilot.",
             "ChatGPT produces a monthly_allocation_review JSON report.",
-            "Copy relevant symbol-level news-risk values into the app when the news input page is available.",
+            <>
+              Copy the monthly JSON report into the{" "}
+              <Link
+                href="/news-input"
+                className="font-medium underline underline-offset-4"
+              >
+                news input page
+              </Link>
+              .
+            </>,
             "Review the monthly plan on the dashboard and invest manually on the 1st or next trading day.",
           ]}
-          outputNote="This report is the one you will usually copy into the frontend once news input is available."
+          outputNote="This report is the one you will usually paste on the news input page."
         />
       </section>
 

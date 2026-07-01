@@ -32,10 +32,6 @@ type GetNewsReportsFilters = {
   limit?: number;
 };
 
-function isHeaderRow(row: ManualNewsInput): boolean {
-  return row.is_report_header;
-}
-
 async function loadReportWithChildren(
   supabase: Awaited<
     ReturnType<typeof import("@/lib/supabase/server").createClient>
@@ -173,6 +169,7 @@ export async function saveNewsInput(
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/news-input");
 
   return { ok: true, data: saved };
 }
@@ -269,5 +266,3 @@ export async function getLatestNewsReport(
   const reports = await getNewsReports({ reportType, limit: 1 });
   return reports?.[0] ?? null;
 }
-
-export { isHeaderRow };
