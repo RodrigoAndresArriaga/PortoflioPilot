@@ -1,47 +1,51 @@
 import { z } from "zod";
 
-export const baseCurrencySchema = z.enum([
-  "MXN",
-  "USD",
-  "EUR",
-  "CAD",
-  "GBP",
-]);
+export {
+  allocationModeSchema,
+  assetTypeSchema,
+  baseCurrencySchema,
+  riskProfileSchema,
+  targetBucketKeySchema,
+  timeHorizonSchema,
+  watchlistAssetTypeSchema,
+  watchlistBucketSchema,
+} from "@/lib/validation/common";
 
-export const riskProfileSchema = z.enum([
-  "conservative",
-  "balanced",
-  "growth",
-  "aggressive_growth",
-]);
+import {
+  allocationModeSchema,
+  baseCurrencySchema,
+  riskProfileSchema,
+  targetBucketKeySchema,
+  timeHorizonSchema,
+} from "@/lib/validation/common";
+import {
+  holdingInputSchema,
+  type HoldingInput,
+} from "@/lib/validation/holdings";
+import {
+  targetAssetInputSchema,
+  targetBucketInputSchema,
+  validateAssetSum,
+  validateBucketSum,
+  type TargetAssetInput,
+  type TargetBucketInput,
+} from "@/lib/validation/targets";
+import {
+  watchlistItemInputSchema,
+  type WatchlistItemInput,
+} from "@/lib/validation/watchlist";
 
-export const timeHorizonSchema = z.enum([
-  "1_3_years",
-  "3_5_years",
-  "5_10_years",
-  "10_plus_years",
-]);
-
-export const assetTypeSchema = z.enum([
-  "etf",
-  "stock",
-  "cash",
-  "crypto",
-  "other",
-]);
-
-export const allocationModeSchema = z.enum(["auto", "bucket", "symbol"]);
-
-export const targetBucketKeySchema = z.enum([
-  "core_etf",
-  "growth_tech",
-  "cash_reserve",
-  "individual_stock",
-]);
-
-export const watchlistAssetTypeSchema = z.enum(["etf", "stock"]);
-
-export const watchlistBucketSchema = z.enum(["core_etf", "growth"]);
+export { holdingInputSchema, type HoldingInput } from "@/lib/validation/holdings";
+export {
+  targetAssetInputSchema,
+  targetBucketInputSchema,
+  type TargetAssetInput,
+  type TargetBucketInput,
+} from "@/lib/validation/targets";
+export {
+  watchlistItemInputSchema,
+  type WatchlistItemInput,
+} from "@/lib/validation/watchlist";
 
 export const BUCKET_DEFINITIONS = [
   {
@@ -80,27 +84,6 @@ export const investorProfileStepSchema = z.object({
   time_horizon: timeHorizonSchema,
 });
 
-export const holdingInputSchema = z.object({
-  symbol: z
-    .string()
-    .trim()
-    .min(1, "Symbol is required")
-    .max(20, "Symbol is too long"),
-  asset_name: z.string().trim().max(100).optional().nullable(),
-  asset_type: assetTypeSchema,
-  currency: baseCurrencySchema,
-  current_value: z.coerce
-    .number()
-    .min(0, "Current value must be zero or greater"),
-  cost_basis: z.coerce
-    .number()
-    .min(0, "Cost basis must be zero or greater")
-    .optional()
-    .nullable(),
-  shares: z.coerce.number().min(0).optional().nullable(),
-  broker: z.string().trim().max(100).optional().nullable(),
-});
-
 export const holdingsStepSchema = z
   .object({
     holdings: z.array(holdingInputSchema).min(1, "Add at least one holding"),
@@ -117,28 +100,6 @@ export const holdingsStepSchema = z
     }
   });
 
-export const targetBucketInputSchema = z.object({
-  bucket_key: targetBucketKeySchema,
-  target_percent: z.coerce
-    .number()
-    .min(0, "Target must be between 0 and 100")
-    .max(100, "Target must be between 0 and 100"),
-  enabled: z.boolean().default(true),
-});
-
-export const targetAssetInputSchema = z.object({
-  symbol: z
-    .string()
-    .trim()
-    .min(1, "Symbol is required")
-    .max(20, "Symbol is too long"),
-  bucket_key: targetBucketKeySchema,
-  target_percent: z.coerce
-    .number()
-    .min(0, "Target must be between 0 and 100")
-    .max(100, "Target must be between 0 and 100"),
-});
-
 export const allocationStepValueSchema = z.object({
   allocation_mode: allocationModeSchema,
   target_buckets: z
@@ -147,49 +108,6 @@ export const allocationStepValueSchema = z.object({
   target_assets: z.array(targetAssetInputSchema),
   include_individual_stock_bucket: z.boolean(),
 });
-
-function validateBucketSum(
-  buckets: z.infer<typeof targetBucketInputSchema>[],
-  ctx: z.RefinementCtx,
-  path: string,
-) {
-  const enabledBuckets = buckets.filter((bucket) => bucket.enabled);
-  const sum = enabledBuckets.reduce(
-    (total, bucket) => total + bucket.target_percent,
-    0,
-  );
-  if (Math.abs(sum - 100) > 0.01) {
-    ctx.addIssue({
-      code: "custom",
-      message: "Bucket targets must sum to 100%",
-      path: [path],
-    });
-  }
-}
-
-function validateAssetSum(
-  assets: z.infer<typeof targetAssetInputSchema>[],
-  ctx: z.RefinementCtx,
-) {
-  const sum = assets.reduce((total, asset) => total + asset.target_percent, 0);
-  if (Math.abs(sum - 100) > 0.01) {
-    ctx.addIssue({
-      code: "custom",
-      message: "Symbol targets must sum to 100%",
-      path: ["target_assets"],
-    });
-  }
-
-  const symbols = assets.map((asset) => asset.symbol.trim().toUpperCase());
-  const unique = new Set(symbols);
-  if (unique.size !== symbols.length) {
-    ctx.addIssue({
-      code: "custom",
-      message: "Duplicate allocation symbols are not allowed",
-      path: ["target_assets"],
-    });
-  }
-}
 
 export const allocationStepSchema = allocationStepValueSchema.superRefine(
   (data, ctx) => {
@@ -209,18 +127,6 @@ export const allocationStepSchema = allocationStepValueSchema.superRefine(
     validateBucketSum(data.target_buckets, ctx, "target_buckets");
   },
 );
-
-export const watchlistItemInputSchema = z.object({
-  symbol: z
-    .string()
-    .trim()
-    .min(1, "Symbol is required")
-    .max(20, "Symbol is too long"),
-  asset_name: z.string().trim().max(100).optional().nullable(),
-  asset_type: watchlistAssetTypeSchema.optional().nullable(),
-  bucket: watchlistBucketSchema.optional().nullable(),
-  sort_order: z.number().int().min(0),
-});
 
 export const watchlistStepSchema = z.object({
   watchlist: z
@@ -281,15 +187,11 @@ export const onboardingPayloadSchema = z
 
 export type CurrencyStepData = z.infer<typeof currencyStepSchema>;
 export type InvestorProfileStepData = z.infer<typeof investorProfileStepSchema>;
-export type HoldingInput = z.infer<typeof holdingInputSchema>;
 export type HoldingsStepData = z.infer<typeof holdingsStepSchema>;
 export type AllocationMode = z.infer<typeof allocationModeSchema>;
 export type TargetBucketKey = z.infer<typeof targetBucketKeySchema>;
-export type TargetBucketInput = z.infer<typeof targetBucketInputSchema>;
-export type TargetAssetInput = z.infer<typeof targetAssetInputSchema>;
 export type AllocationStepValue = z.infer<typeof allocationStepValueSchema>;
 export type AllocationStepData = z.infer<typeof allocationStepSchema>;
-export type WatchlistItemInput = z.infer<typeof watchlistItemInputSchema>;
 export type WatchlistStepData = z.infer<typeof watchlistStepSchema>;
 export type OnboardingPayload = z.infer<typeof onboardingPayloadSchema>;
 export type OnboardingFormData = OnboardingPayload;

@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboardIcon } from "lucide-react";
+import {
+  BriefcaseIcon,
+  EyeIcon,
+  LayoutDashboardIcon,
+  PieChartIcon,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -16,9 +21,22 @@ const navItems = [
     label: "Dashboard",
     icon: LayoutDashboardIcon,
   },
+  {
+    href: "/holdings",
+    label: "Holdings",
+    icon: BriefcaseIcon,
+  },
+  {
+    href: "/settings/allocations",
+    label: "Allocations",
+    icon: PieChartIcon,
+  },
+  {
+    href: "/settings/watchlist",
+    label: "Watchlist",
+    icon: EyeIcon,
+  },
 ] as const;
-
-const comingSoonItems = ["Holdings", "Settings"] as const;
 
 export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
@@ -40,7 +58,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
 
           return (
@@ -60,21 +79,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </Link>
           );
         })}
-
-        <div className="pt-4">
-          <p className="px-3 pb-2 text-xs font-medium text-muted-foreground">
-            Coming soon
-          </p>
-          {comingSoonItems.map((label) => (
-            <div
-              key={label}
-              aria-disabled="true"
-              className="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground/70"
-            >
-              {label}
-            </div>
-          ))}
-        </div>
       </nav>
     </div>
   );

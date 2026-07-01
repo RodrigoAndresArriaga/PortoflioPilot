@@ -20,13 +20,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import type { Profile } from "@/lib/server/profile";
+import type { Profile } from "@/types/database";
 
 import { Sidebar } from "./sidebar";
 
 type TopNavProps = {
   profile: Pick<Profile, "full_name" | "id">;
   email?: string | null;
+  pageTitle?: string;
 };
 
 function getInitials(name: string | null): string {
@@ -42,7 +43,11 @@ function getInitials(name: string | null): string {
     .toUpperCase();
 }
 
-export function TopNav({ profile, email }: TopNavProps) {
+export function TopNav({
+  profile,
+  email,
+  pageTitle = "Dashboard",
+}: TopNavProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const displayName = profile.full_name ?? "User";
 
@@ -71,7 +76,7 @@ export function TopNav({ profile, email }: TopNavProps) {
         </Sheet>
 
         <h1 className="text-sm font-medium text-foreground md:text-base">
-          Dashboard
+          {pageTitle}
         </h1>
       </div>
 

@@ -8,7 +8,10 @@ export async function proxy(request: NextRequest) {
 
   if (
     !user &&
-    (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
+    (pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/onboarding") ||
+      pathname.startsWith("/holdings") ||
+      pathname.startsWith("/settings"))
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
