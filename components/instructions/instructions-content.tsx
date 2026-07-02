@@ -46,16 +46,18 @@ export function InstructionsContent({
       {!hasWatchlist && (
         <Alert variant="destructive">
           <InfoIcon />
-          <AlertTitle>Watchlist required</AlertTitle>
+          <AlertTitle>Watchlist required for ongoing prompts</AlertTitle>
           <AlertDescription>
-            Add at least one enabled symbol on your{" "}
+            Daily, weekly, and monthly prompts need at least one enabled symbol
+            on your{" "}
             <Link
               href="/settings/watchlist"
               className="font-medium underline underline-offset-4"
             >
               watchlist settings
             </Link>{" "}
-            page to generate personalized prompts.
+            page. Initial investment research works without a watchlist — it
+            proposes candidates based on your profile.
           </AlertDescription>
         </Alert>
       )}
@@ -179,7 +181,7 @@ export function InstructionsContent({
         <WorkflowSection
           title="Initial investment research"
           schedule="Before your first manual investment"
-          purpose="Produce structured initial investment research for your watchlist without making final buy decisions."
+          purpose="Produce structured initial investment research before your first manual investment — with or without a watchlist."
           steps={[
             "Copy the Initial Investment Research Prompt below.",
             "Run it manually in ChatGPT.",
@@ -207,8 +209,8 @@ export function InstructionsContent({
           </h3>
           <p className="text-sm text-muted-foreground">
             {hasWatchlist
-              ? `Prompts include your watchlist: ${symbols.join(", ")}`
-              : "Prompts will include your watchlist once symbols are configured."}
+              ? `Ongoing prompts include your watchlist: ${symbols.join(", ")}`
+              : "Ongoing prompts need a watchlist. Initial investment research uses your profile only."}
           </p>
         </div>
 
@@ -217,9 +219,8 @@ export function InstructionsContent({
             <PromptCard
               title="Initial investment research"
               schedule="Before your first manual investment"
-              description="Structured research for your watchlist to support an initial manual investment recommendation."
+              description="Structured research to support an initial manual investment recommendation. Works without a watchlist — ChatGPT proposes candidate symbols for your profile."
               prompt={initialInvestmentPrompt}
-              copyDisabled={!hasWatchlist}
             />
           )}
           <PromptCard

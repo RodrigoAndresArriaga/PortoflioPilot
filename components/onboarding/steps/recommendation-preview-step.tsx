@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -11,11 +10,15 @@ import type { OnboardingFormData } from "@/lib/validation/onboarding";
 type RecommendationPreviewStepProps = {
   formData: OnboardingFormData;
   isResume?: boolean;
+  completing?: boolean;
+  onCompleteAndNavigate?: (href: string) => void;
 };
 
 export function RecommendationPreviewStep({
   formData,
   isResume = false,
+  completing = false,
+  onCompleteAndNavigate,
 }: RecommendationPreviewStepProps) {
   const [recommendations, setRecommendations] = useState<
     RecommendationCandidate[]
@@ -72,20 +75,24 @@ export function RecommendationPreviewStep({
           in ChatGPT manually, then paste the JSON on the initial recommendation
           page.
         </p>
-        <div className="flex flex-wrap gap-2 text-sm">
-          <Link
-            href="/instructions"
-            className="font-medium text-primary underline underline-offset-4"
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <button
+            type="button"
+            disabled={completing || !onCompleteAndNavigate}
+            onClick={() => onCompleteAndNavigate?.("/instructions")}
+            className="font-medium text-primary underline underline-offset-4 disabled:opacity-50"
           >
-            Open instructions
-          </Link>
+            {completing ? "Saving..." : "Open instructions"}
+          </button>
           <span className="text-muted-foreground">·</span>
-          <Link
-            href="/initial-recommendation"
-            className="font-medium text-primary underline underline-offset-4"
+          <button
+            type="button"
+            disabled={completing || !onCompleteAndNavigate}
+            onClick={() => onCompleteAndNavigate?.("/initial-recommendation")}
+            className="font-medium text-primary underline underline-offset-4 disabled:opacity-50"
           >
-            Initial recommendation
-          </Link>
+            {completing ? "Saving..." : "Initial recommendation"}
+          </button>
         </div>
         {recommendations.length > 0 && (
           <p className="text-sm text-muted-foreground">

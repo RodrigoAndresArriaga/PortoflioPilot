@@ -12,6 +12,11 @@ export const profileSettingsSchema = z.object({
   monthly_investment_amount: z.coerce
     .number()
     .min(0, "Monthly amount must be zero or greater"),
+  initial_investment_amount: z.coerce
+    .number()
+    .min(0, "Initial amount must be zero or greater")
+    .nullable()
+    .optional(),
   investment_day: z.coerce
     .number()
     .int()

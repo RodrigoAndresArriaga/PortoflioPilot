@@ -33,6 +33,7 @@ import {
   investorProfileStepSchema,
   mergeHoldingsIntoWatchlist,
   optionalHoldingsStepSchema,
+  optionalWatchlistStepSchema,
   type OnboardingFormData,
   watchlistStepSchema,
 } from "@/lib/validation/onboarding";
@@ -61,6 +62,7 @@ export function OnboardingWizard({
 
   const isResume = mode === "resume";
   const holdingsOptional = formData.investment_status === "not_invested_yet";
+  const watchlistOptional = formData.investment_status === "not_invested_yet";
 
   const stepLabel = useMemo(() => {
     if (step === 0) {
@@ -150,7 +152,10 @@ export function OnboardingWizard({
     }
 
     if (step === 5) {
-      const result = watchlistStepSchema.safeParse({
+      const schema = watchlistOptional
+        ? optionalWatchlistStepSchema
+        : watchlistStepSchema;
+      const result = schema.safeParse({
         watchlist: formData.watchlist,
       });
       if (!result.success) {
@@ -190,7 +195,16 @@ export function OnboardingWizard({
     setStep(5);
   }
 
-  async function handleComplete() {
+  function handleSkipWatchlist() {
+    if (!watchlistOptional) {
+      return;
+    }
+    updateFormData({ watchlist: [] });
+    setErrors({});
+    setStep(6);
+  }
+
+  async function submitOnboarding(redirectTo: string) {
     if (!validateCurrentStep()) {
       return;
     }
@@ -216,11 +230,19 @@ export function OnboardingWizard({
         return;
       }
 
-      router.push("/dashboard");
+      router.push(redirectTo);
       router.refresh();
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleComplete() {
+    void submitOnboarding("/dashboard");
+  }
+
+  function handleCompleteAndNavigate(href: string) {
+    void submitOnboarding(href);
   }
 
   return (
@@ -260,7 +282,13 @@ export function OnboardingWizard({
         {step === 3 && (
           <InvestmentStatusStep
             value={{ investment_status: formData.investment_status }}
+            baseCurrency={formData.base_currency}
+            monthlyInvestmentAmount={formData.monthly_investment_amount}
+            initialInvestmentAmount={formData.initial_investment_amount ?? null}
             onChange={(value) => updateFormData(value)}
+            onInitialInvestmentAmountChange={(initial_investment_amount) =>
+              updateFormData({ initial_investment_amount })
+            }
             errors={errors}
           />
         )}
@@ -281,6 +309,7 @@ export function OnboardingWizard({
             holdings={formData.holdings}
             onChange={(watchlist) => updateFormData({ watchlist })}
             errors={errors}
+            optional={watchlistOptional}
           />
         )}
 
@@ -288,6 +317,10 @@ export function OnboardingWizard({
           <RecommendationPreviewStep
             formData={formData}
             isResume={isResume}
+            completing={loading}
+            onCompleteAndNavigate={
+              isResume ? undefined : handleCompleteAndNavigate
+            }
           />
         )}
 
@@ -315,6 +348,17 @@ export function OnboardingWizard({
                 type="button"
                 variant="ghost"
                 onClick={handleSkipHoldings}
+                disabled={loading}
+              >
+                Skip for now
+              </Button>
+            )}
+
+            {step === 5 && watchlistOptional && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleSkipWatchlist}
                 disabled={loading}
               >
                 Skip for now

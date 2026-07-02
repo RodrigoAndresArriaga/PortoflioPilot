@@ -29,17 +29,20 @@ describe("buildDailyUrgentPrompt", () => {
 });
 
 describe("buildInitialInvestmentResearchPrompt", () => {
-  it("returns empty string when watchlist is empty", () => {
-    expect(
-      buildInitialInvestmentResearchPrompt({
-        currency: "MXN",
-        monthlyAmount: 4000,
-        initialInvestmentAmount: 4000,
-        riskProfile: "growth",
-        timeHorizon: "10_plus_years",
-        watchlist: [],
-      }),
-    ).toBe("");
+  it("returns a generic prompt when watchlist is empty", () => {
+    const prompt = buildInitialInvestmentResearchPrompt({
+      currency: "MXN",
+      monthlyAmount: 4000,
+      initialInvestmentAmount: 4000,
+      riskProfile: "growth",
+      timeHorizon: "10_plus_years",
+      watchlist: [],
+    });
+
+    expect(prompt).not.toBe("");
+    expect(prompt).toContain("none yet");
+    expect(prompt).toContain("Propose concrete ETF candidates");
+    expect(prompt).toContain('"report_type": "initial_investment_research"');
   });
 
   it("includes watchlist and investment amounts", () => {

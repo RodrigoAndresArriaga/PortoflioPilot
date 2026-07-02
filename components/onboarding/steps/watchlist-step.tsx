@@ -1,8 +1,14 @@
 "use client";
 
+import { useState } from "react";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   buildWatchlistOptions,
+  createWatchlistItemFromCustomInput,
   type HoldingInput,
   type WatchlistItemInput,
 } from "@/lib/validation/onboarding";
@@ -12,6 +18,7 @@ type WatchlistStepProps = {
   holdings: HoldingInput[];
   onChange: (value: WatchlistItemInput[]) => void;
   errors?: Record<string, string>;
+  optional?: boolean;
 };
 
 export function WatchlistStep({
@@ -19,9 +26,28 @@ export function WatchlistStep({
   holdings,
   onChange,
   errors,
+  optional = false,
 }: WatchlistStepProps) {
   const options = buildWatchlistOptions(holdings);
-  const selectedSymbols = new Set(value.map((item) => item.symbol));
+  const selectedSymbols = new Set(
+    value.map((item) => item.symbol.trim().toUpperCase()),
+  );
+
+  const [customSymbol, setCustomSymbol] = useState("");
+  const [customName, setCustomName] = useState("");
+  const [customAssetType, setCustomAssetType] = useState<"etf" | "stock">("etf");
+  const [customBucket, setCustomBucket] = useState<"core_etf" | "growth">(
+    "core_etf",
+  );
+  const [customError, setCustomError] = useState<string | null>(null);
+
+  function removeSymbol(symbol: string) {
+    onChange(
+      value
+        .filter((item) => item.symbol !== symbol)
+        .map((item, index) => ({ ...item, sort_order: index })),
+    );
+  }
 
   function toggleSymbol(
     option: (typeof options)[number],
@@ -41,11 +67,39 @@ export function WatchlistStep({
       return;
     }
 
-    onChange(
-      value
-        .filter((item) => item.symbol !== option.symbol)
-        .map((item, index) => ({ ...item, sort_order: index })),
-    );
+    removeSymbol(option.symbol);
+  }
+
+  function addCustomSymbol() {
+    const symbol = customSymbol.trim().toUpperCase();
+    if (!symbol) {
+      setCustomError("Symbol is required");
+      return;
+    }
+
+    if (selectedSymbols.has(symbol)) {
+      setCustomError("Symbol is already on your watchlist");
+      return;
+    }
+
+    onChange([
+      ...value,
+      createWatchlistItemFromCustomInput(
+        {
+          symbol,
+          asset_name: customName || null,
+          asset_type: customAssetType,
+          bucket: customBucket,
+        },
+        value.length,
+      ),
+    ]);
+
+    setCustomSymbol("");
+    setCustomName("");
+    setCustomAssetType("etf");
+    setCustomBucket("core_etf");
+    setCustomError(null);
   }
 
   const coreOptions = options.filter((item) => item.bucket === "core_etf");
@@ -56,9 +110,16 @@ export function WatchlistStep({
       <div className="space-y-2">
         <h3 className="text-lg font-semibold">Watchlist</h3>
         <p className="text-sm text-muted-foreground">
-          Select symbols to monitor. Keep the list focused — fewer tickers means
-          less noise.
+          Select symbols to monitor or add your own tickers. Keep the list
+          focused — fewer tickers means less noise.
         </p>
+        {optional && (
+          <p className="text-sm text-muted-foreground">
+            You can skip this step and add symbols later in Settings. ChatGPT
+            prompts on the Instructions page need at least one symbol when you
+            are ready.
+          </p>
+        )}
       </div>
 
       <fieldset className="space-y-3">
@@ -103,9 +164,103 @@ export function WatchlistStep({
         ))}
       </fieldset>
 
-      <p className="text-sm text-muted-foreground">
-        Selected: {value.length} symbol{value.length === 1 ? "" : "s"}
-      </p>
+      <div className="space-y-3 rounded-lg border border-input p-4">
+        <p className="text-sm font-medium">Add custom symbol</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="custom-symbol">Symbol</Label>
+            <Input
+              id="custom-symbol"
+              value={customSymbol}
+              onChange={(event) => {
+                setCustomSymbol(event.target.value);
+                setCustomError(null);
+              }}
+              placeholder="IWDA"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="custom-name">Name (optional)</Label>
+            <Input
+              id="custom-name"
+              value={customName}
+              onChange={(event) => setCustomName(event.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="custom-asset-type">Type</Label>
+            <select
+              id="custom-asset-type"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              value={customAssetType}
+              onChange={(event) =>
+                setCustomAssetType(event.target.value as "etf" | "stock")
+              }
+            >
+              <option value="etf">ETF</option>
+              <option value="stock">Stock</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="custom-bucket">Bucket</Label>
+            <select
+              id="custom-bucket"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              value={customBucket}
+              onChange={(event) =>
+                setCustomBucket(event.target.value as "core_etf" | "growth")
+              }
+            >
+              <option value="core_etf">Core ETF</option>
+              <option value="growth">Growth</option>
+            </select>
+          </div>
+        </div>
+
+        {customError && (
+          <p className="text-sm text-destructive">{customError}</p>
+        )}
+
+        <Button type="button" variant="outline" size="sm" onClick={addCustomSymbol}>
+          Add to watchlist
+        </Button>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Your selections</p>
+        {value.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {optional
+              ? "No symbols selected yet. Pick presets, add a custom ticker, or skip for now."
+              : "No symbols selected yet. Pick presets or add a custom ticker."}
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {value.map((item) => (
+              <li
+                key={item.symbol}
+                className="flex items-center justify-between gap-3 rounded-md border border-input px-3 py-2"
+              >
+                <span className="text-sm">
+                  {item.symbol}
+                  {item.asset_name ? ` — ${item.asset_name}` : ""}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeSymbol(item.symbol)}
+                >
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {errors?.watchlist && (
         <p className="text-sm text-destructive">{errors.watchlist}</p>

@@ -9,14 +9,47 @@ type InitialInvestmentPromptInput = {
   watchlist: string[];
 };
 
+function buildWatchlistContext(watchlist: string[]): string {
+  if (watchlist.length === 0) {
+    return "- Watchlist/interests: none yet — propose suitable candidate symbols for this profile";
+  }
+
+  return `- Watchlist/interests: ${formatWatchlistLine(watchlist)}`;
+}
+
+function buildTaskSection(watchlist: string[]): string {
+  if (watchlist.length === 0) {
+    return `Task:
+The user has not invested yet and has not defined a watchlist. Research broadly suitable assets for a beginner/early portfolio matching the profile above. Propose concrete ETF candidates and optionally satellite stocks (with tickers) that fit:
+- broad ETF suitability
+- diversification
+- fundamental quality
+- valuation risk
+- current market/news risk
+- concentration risk
+- long-term fit
+- whether each asset should be considered core, satellite, cash reserve, or avoid/manual review
+
+Include every proposed candidate in the symbols array of the JSON output. The user will build their watchlist from assets they choose to invest in manually.`;
+  }
+
+  return `Task:
+Analyze the watchlist and produce structured initial investment research for a beginner/early portfolio. Focus on:
+- broad ETF suitability
+- diversification
+- fundamental quality
+- valuation risk
+- current market/news risk
+- concentration risk
+- long-term fit
+- whether each asset should be considered core, satellite, cash reserve, or avoid/manual review`;
+}
+
 export function buildInitialInvestmentResearchPrompt(
   input: InitialInvestmentPromptInput,
 ): string {
-  if (input.watchlist.length === 0) {
-    return "";
-  }
-
-  const watchlist = formatWatchlistLine(input.watchlist);
+  const watchlistContext = buildWatchlistContext(input.watchlist);
+  const taskSection = buildTaskSection(input.watchlist);
 
   return `You are producing an initial investment research report for a manual-only long-term investment dashboard called PortfolioPilot.
 
@@ -33,18 +66,9 @@ User profile:
 - Risk profile: ${input.riskProfile}
 - Time horizon: ${input.timeHorizon}
 - Investment status: not invested yet
-- Watchlist/interests: ${watchlist}
+${watchlistContext}
 
-Task:
-Analyze the watchlist and produce structured initial investment research for a beginner/early portfolio. Focus on:
-- broad ETF suitability
-- diversification
-- fundamental quality
-- valuation risk
-- current market/news risk
-- concentration risk
-- long-term fit
-- whether each asset should be considered core, satellite, cash reserve, or avoid/manual review
+${taskSection}
 
 Return valid JSON only.
 

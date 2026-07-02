@@ -1,11 +1,16 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { InvestmentStatusStepData } from "@/lib/validation/onboarding";
 
 type InvestmentStatusStepProps = {
   value: InvestmentStatusStepData;
+  baseCurrency: string;
+  monthlyInvestmentAmount: number;
+  initialInvestmentAmount: number | null;
   onChange: (value: InvestmentStatusStepData) => void;
+  onInitialInvestmentAmountChange: (value: number | null) => void;
   errors?: Record<string, string>;
 };
 
@@ -25,9 +30,15 @@ const OPTIONS = [
 
 export function InvestmentStatusStep({
   value,
+  baseCurrency,
+  monthlyInvestmentAmount,
+  initialInvestmentAmount,
   onChange,
+  onInitialInvestmentAmountChange,
   errors,
 }: InvestmentStatusStepProps) {
+  const showInitialAmount = value.investment_status === "not_invested_yet";
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -69,6 +80,39 @@ export function InvestmentStatusStep({
           );
         })}
       </div>
+
+      {showInitialAmount && (
+        <div className="space-y-2 rounded-lg border border-input p-4">
+          <Label htmlFor="initial_investment_amount">
+            Initial investment amount ({baseCurrency})
+          </Label>
+          <Input
+            id="initial_investment_amount"
+            type="number"
+            min={0}
+            step="0.01"
+            value={initialInvestmentAmount ?? ""}
+            onChange={(event) =>
+              onInitialInvestmentAmountChange(
+                event.target.value === ""
+                  ? null
+                  : event.target.valueAsNumber || 0,
+              )
+            }
+          />
+          <p className="text-xs text-muted-foreground">
+            One-time amount for your first manual investment. Used in the initial
+            investment research prompt and can differ from your monthly amount
+            ({monthlyInvestmentAmount.toLocaleString()} {baseCurrency}/month).
+            Leave empty to default to your monthly amount.
+          </p>
+          {errors?.initial_investment_amount && (
+            <p className="text-sm text-destructive">
+              {errors.initial_investment_amount}
+            </p>
+          )}
+        </div>
+      )}
 
       {errors?.investment_status && (
         <p className="text-sm text-destructive">{errors.investment_status}</p>

@@ -19,7 +19,8 @@ export function CurrencyStep({ value, onChange, errors }: CurrencyStepProps) {
       <div className="space-y-2">
         <h3 className="text-lg font-semibold">Currency and monthly amount</h3>
         <p className="text-sm text-muted-foreground">
-          Tell us how much you invest each month and when.
+          Tell us your preferred currency and how much you plan to invest each
+          month.
         </p>
       </div>
 
@@ -65,37 +66,6 @@ export function CurrencyStep({ value, onChange, errors }: CurrencyStepProps) {
         {errors?.monthly_investment_amount && (
           <p className="text-sm text-destructive">
             {errors.monthly_investment_amount}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="initial_investment_amount">
-          Initial amount to invest now (optional)
-        </Label>
-        <Input
-          id="initial_investment_amount"
-          type="number"
-          min={0}
-          step="0.01"
-          value={value.initial_investment_amount ?? ""}
-          onChange={(event) =>
-            onChange({
-              ...value,
-              initial_investment_amount:
-                event.target.value === ""
-                  ? null
-                  : event.target.valueAsNumber || 0,
-            })
-          }
-        />
-        <p className="text-xs text-muted-foreground">
-          Leave empty to use your monthly amount for the first initial
-          recommendation plan.
-        </p>
-        {errors?.initial_investment_amount && (
-          <p className="text-sm text-destructive">
-            {errors.initial_investment_amount}
           </p>
         )}
       </div>

@@ -87,6 +87,10 @@ export const watchlistStepSchema = z.object({
     .min(1, "Select at least one watchlist symbol"),
 });
 
+export const optionalWatchlistStepSchema = z.object({
+  watchlist: z.array(watchlistItemInputSchema),
+});
+
 const onboardingBaseSchema = z.object({
   base_currency: baseCurrencySchema,
   monthly_investment_amount: z.coerce
@@ -104,19 +108,20 @@ const onboardingBaseSchema = z.object({
     .optional(),
   risk_profile: riskProfileSchema,
   time_horizon: timeHorizonSchema,
-  watchlist: z
-    .array(watchlistItemInputSchema)
-    .min(1, "Select at least one watchlist symbol"),
 });
 
 export const onboardingPayloadSchema = z.discriminatedUnion("investment_status", [
   onboardingBaseSchema.extend({
     investment_status: z.literal("has_investments"),
     holdings: z.array(holdingInputSchema).min(1, "Add at least one holding"),
+    watchlist: z
+      .array(watchlistItemInputSchema)
+      .min(1, "Select at least one watchlist symbol"),
   }),
   onboardingBaseSchema.extend({
     investment_status: z.literal("not_invested_yet"),
     holdings: z.array(holdingInputSchema),
+    watchlist: z.array(watchlistItemInputSchema),
   }),
 ]);
 
@@ -216,6 +221,26 @@ function holdingToWatchlistItem(
         ? holding.asset_type
         : "stock",
     bucket: holding.asset_type === "etf" ? "core_etf" : "growth",
+    sort_order: sortOrder,
+  };
+}
+
+export type CustomWatchlistInput = {
+  symbol: string;
+  asset_name?: string | null;
+  asset_type: "etf" | "stock";
+  bucket: "core_etf" | "growth";
+};
+
+export function createWatchlistItemFromCustomInput(
+  input: CustomWatchlistInput,
+  sortOrder: number,
+): WatchlistItemInput {
+  return {
+    symbol: input.symbol.trim().toUpperCase(),
+    asset_name: input.asset_name?.trim() || null,
+    asset_type: input.asset_type,
+    bucket: input.bucket,
     sort_order: sortOrder,
   };
 }

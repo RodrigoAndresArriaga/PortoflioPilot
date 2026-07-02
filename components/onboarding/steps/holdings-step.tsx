@@ -89,8 +89,8 @@ export function HoldingsStep({
       <div className="space-y-2">
         <h3 className="text-lg font-semibold">Current holdings</h3>
         <p className="text-sm text-muted-foreground">
-          Enter symbols and shares. ETF and stock values are fetched from Yahoo
-          Finance on save.
+          Enter any ticker — you are not limited to the sample list. ETF and
+          stock values are fetched from Yahoo Finance on save.
         </p>
       </div>
 

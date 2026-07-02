@@ -43,6 +43,7 @@ function profileToFormInput(profile: Profile): ProfileSettingsInput {
     full_name: profile.full_name,
     base_currency: profile.base_currency as ProfileSettingsInput["base_currency"],
     monthly_investment_amount: profile.monthly_investment_amount,
+    initial_investment_amount: profile.initial_investment_amount,
     investment_day: profile.investment_day,
     risk_profile: profile.risk_profile as ProfileSettingsInput["risk_profile"],
     time_horizon: profile.time_horizon as ProfileSettingsInput["time_horizon"],
@@ -193,6 +194,52 @@ export function ProfileSettingsForm({ profile, email }: ProfileSettingsFormProps
           </div>
         </div>
       </section>
+
+      {profile.investment_status === "not_invested_yet" && (
+        <section id="initial-amount" className="scroll-mt-24 space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold text-foreground">
+              Initial investment amount
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              One-time amount for your first manual investment. Used in the
+              initial investment research prompt and can differ from your monthly
+              amount.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="space-y-2">
+              <Label htmlFor="initial_investment_amount">
+                Initial investment amount ({form.base_currency})
+              </Label>
+              <Input
+                id="initial_investment_amount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.initial_investment_amount ?? ""}
+                onChange={(event) =>
+                  updateForm(
+                    "initial_investment_amount",
+                    event.target.value === ""
+                      ? null
+                      : event.target.valueAsNumber || 0,
+                  )
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to default to your monthly amount in the initial
+                investment prompt.
+              </p>
+              {errors.initial_investment_amount && (
+                <p className="text-sm text-destructive">
+                  {errors.initial_investment_amount}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section id="investment-day" className="scroll-mt-24 space-y-4">
         <div className="space-y-1">

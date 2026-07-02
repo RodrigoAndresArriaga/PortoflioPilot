@@ -26,6 +26,11 @@ const updateUserProfileSchema = z
       .number()
       .min(0, "Monthly amount must be zero or greater")
       .optional(),
+    initial_investment_amount: z.coerce
+      .number()
+      .min(0, "Initial amount must be zero or greater")
+      .nullable()
+      .optional(),
     investment_day: z.coerce
       .number()
       .int()
@@ -40,6 +45,7 @@ const updateUserProfileSchema = z
       data.full_name !== undefined ||
       data.base_currency !== undefined ||
       data.monthly_investment_amount !== undefined ||
+      data.initial_investment_amount !== undefined ||
       data.investment_day !== undefined ||
       data.risk_profile !== undefined ||
       data.time_horizon !== undefined,
@@ -110,6 +116,9 @@ export async function updateUserProfile(
   if (payload.monthly_investment_amount !== undefined) {
     updateFields.monthly_investment_amount = payload.monthly_investment_amount;
   }
+  if (payload.initial_investment_amount !== undefined) {
+    updateFields.initial_investment_amount = payload.initial_investment_amount;
+  }
   if (payload.investment_day !== undefined) {
     updateFields.investment_day = payload.investment_day;
   }
@@ -144,6 +153,8 @@ export async function updateUserProfile(
   revalidatePath("/dashboard");
   revalidatePath("/settings");
   revalidatePath("/monthly-plan");
+  revalidatePath("/instructions");
+  revalidatePath("/initial-recommendation");
 
   return { ok: true, data };
 }
